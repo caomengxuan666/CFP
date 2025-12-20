@@ -1,4 +1,4 @@
-/* 
+/*
  *  Copyright © 2025 [caomengxuan666]
  *  
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -19,38 +19,42 @@
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  *  SOFTWARE.
  *  
- *  - File: main.cpp
+ *  - File: ImageSignalBus.hpp
  *  - CreationYear: 2025
  *  - Date: Sat Dec 20 2025
  *  - Username: Administrator
  *  - CopyrightYear: 2025
  */
 
-#include <QDir>
-#include <QFontDatabase>
-#include <QtWidgets/QApplication>
+// ImageSignalBus.hpp
+#pragma once
+#include <functional>
+#include <opencv2/core/mat.hpp>
+#include <shared_mutex>
+#include <string>
+#include <unordered_map>
+#include <vector>
+class ImageSignalBus {
+ public:
+  using ImageCallback = std::function<void(const cv::Mat&)>;
 
-#include "DvpMainWindow.h"
-
-int main(int argc, char *argv[]) {
-  QApplication a(argc, argv);
-  a.setOrganizationName("Organization");
-  a.setApplicationName("DvpDetect");
-
-  // 设置高DPI支持
-  QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-  QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
-
-  // 加载字体
-  QDir dir("fonts");
-  if (dir.exists()) {
-    const QStringList fonts = dir.entryList(QStringList("*.ttf"));
-    for (const QString &font : fonts) {
-      QFontDatabase::addApplicationFont(dir.filePath(font));
-    }
+  // 单例
+  static ImageSignalBus& instance() {
+    static ImageSignalBus bus;
+    return bus;
   }
 
-  DvpMainWindow w;
-  w.show();
-  return a.exec();
-}
+  // 算法调用：声明自己能提供哪些信号
+  void declare_signal(const std::string& signal_name);
+
+  // UI 或其他模块调用：订阅某个信号
+  void subscribe(const std::string& signal_name, ImageCallback callback);
+
+  // 算法内部调用：广播图像（自动深拷贝）
+  void emit(const std::string& signal_name, const cv::Mat& img);
+
+ private:
+  ImageSignalBus() = default;
+  std::unordered_map<std::string, std::vector<ImageCallback>> subscribers_;
+  mutable std::shared_mutex mutex_;
+};

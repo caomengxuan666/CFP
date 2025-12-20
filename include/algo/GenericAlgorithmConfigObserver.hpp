@@ -19,62 +19,63 @@
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  *  SOFTWARE.
  *  
- *  - File: HoleDetection.hpp
+ *  - File: GenericAlgorithmConfigObserver.hpp
  *  - CreationYear: 2025
  *  - Date: Sat Dec 20 2025
  *  - Username: Administrator
  *  - CopyrightYear: 2025
  */
 
+// algo/GenericAlgorithmConfigObserver.hpp
 #pragma once
-
-#include <shared_mutex>
+#include <memory>
+#include <mutex>
+#include <utility>
 #include <vector>
 
-#include "AlgoBase.hpp"
 #include "algo/AlgorithmConfigTraits.hpp"
-#include "config/AlogoParams.hpp"
 #include "config/ConfigObserver.hpp"
+
 namespace algo {
 
-template <>
-struct AlgorithmConfigExtractor<config::HoleDetectionConfig> {
-  static const config::HoleDetectionConfig& extract(
-      const config::GlobalConfig& global_cfg) {
-    return global_cfg.hole_detection;
-  }
-};
-
-struct PartitionConfig {
-  double left_ratio = 0.3;
-  double mid_ratio = 0.4;
-  double right_ratio = 0.3;
-  int left_thresh = 20;
-  int mid_thresh = 23;
-  int right_thresh = 20;
-};
-
-class HoleDetection : public AlgoBase {
+template <typename AlgoType>
+class GenericAlgorithmConfigObserver : public config::ConfigObserver {
  public:
-  ALGO_METADATA("HoleDetection", "针孔检测")
-  using Config = config::HoleDetectionConfig;
+  using AlgoConfigType = typename AlgoType::Config;
 
-  HoleDetection();
-  explicit HoleDetection(const Config& cfg);
-  void process(const CapturedFrame& frame) override;
+  void add_algorithm(std::shared_ptr<AlgoType> algo) {
+    if (!algo) {
+      return;
+    }
+    std::lock_guard lock(mutex_);
+    algorithms_.push_back(std::move(algo));
+  }
 
-  std::vector<AlgoParamInfo> get_parameter_info() const override;
-  std::vector<AlgoSignalInfo> get_signal_info() const override;
+  void remove_algorithm(const std::shared_ptr<AlgoType>& algo) {
+    std::lock_guard lock(mutex_);
+    algorithms_.erase(
+        std::remove_if(algorithms_.begin(), algorithms_.end(),
+                       [&algo](const auto& ptr) { return ptr == algo; }),
+        algorithms_.end());
+  }
 
-  void update_config(const Config& new_cfg);
+  void onConfigReloaded(const config::GlobalConfig& new_config) override {
+    // 1. 提取配置（类型安全）
+    const auto& algo_config =
+        AlgorithmConfigExtractor<AlgoConfigType>::extract(new_config);
+
+    // 2. 批量更新所有算法实例
+    std::lock_guard lock(mutex_);
+    for (auto& algo : algorithms_) {
+      if (algo) {
+        algo->update_config(algo_config);
+      }
+    }
+  }
 
  private:
-  void parse_partition_params();
-
- private:
-  Config config_;
-  PartitionConfig parsed_params_;
-  mutable std::shared_mutex config_mutex_;
+  std::vector<std::shared_ptr<AlgoType>> algorithms_;
+  mutable std::mutex mutex_;
 };
 
 }  // namespace algo

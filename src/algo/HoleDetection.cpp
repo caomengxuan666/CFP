@@ -1,3 +1,31 @@
+/* 
+ *  Copyright © 2025 [caomengxuan666]
+ *  
+ *  Permission is hereby granted, free of charge, to any person obtaining a copy
+ *  of this software and associated documentation files (the “Software”), to deal
+ *  in the Software without restriction, including without limitation the rights
+ *  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ *  copies of the Software, and to permit persons to whom the Software is furnished
+ *  to do so, subject to the following conditions:
+ *  
+ *  The above copyright notice and this permission notice shall be included in all
+ *  copies or substantial portions of the Software.
+ *  
+ *  THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ *  SOFTWARE.
+ *  
+ *  - File: HoleDetection.cpp
+ *  - CreationYear: 2025
+ *  - Date: Sat Dec 20 2025
+ *  - Username: Administrator
+ *  - CopyrightYear: 2025
+ */
+
 /**
  * @file HoleDetection.cpp
  * @brief Implementation of hole detection algorithm for industrial inspection
@@ -57,7 +85,6 @@
 // for opencv
 #include <opencv2/opencv.hpp>
 // utils
-#include "utils/utils.h"
 
 using namespace algo;         // NOLINT
 using namespace cv;           // NOLINT
@@ -75,7 +102,8 @@ namespace fs = std::filesystem;
   const double name##_ms =                                                   \
       duration_cast<duration<double, std::milli>>(name##_end - name##_start) \
           .count();                                                          \
-  cout << msg << name##_ms << " ms" << endl
+  cout << (msg) << name##_ms << " ms" << endl
+
 #define HOLE_DETECTION_TIMING_ONLY(name)                                     \
   auto name##_end = high_resolution_clock::now();                            \
   const double name##_ms =                                                   \
@@ -104,6 +132,15 @@ __forceinline double euclidean_distance(const Point& a,
   double dx = static_cast<double>(a.x - b.x);
   double dy = static_cast<double>(a.y - b.y);
   return std::sqrt(dx * dx + dy * dy);
+}
+
+static cv::Mat CapturedFrame2Mat(const CapturedFrame& frame) {
+  // 可选：校验数据大小（根据 CV_8UC3 假设）
+  // assert(frame.data.size() ==
+  //        static_cast<size_t>(frame.width() * frame.height() * 3));
+
+  return cv::Mat(frame.height(), frame.width(), CV_8UC3,
+                 const_cast<uint8_t*>(frame.data.data()));
 }
 
 static std::vector<std::string> get_image_files(const std::string& dir) {
@@ -282,38 +319,38 @@ struct ParallelThresholdTask : public cv::ParallelLoopBody {
   }
 };
 
-static Mat apply_partitioned_threshold_parallel(const Mat& image) noexcept {
+static Mat apply_partitioned_threshold_parallel(
+    const cv::Mat& image, const PartitionConfig& params) noexcept {
   if (!is_big_image(image)) {
     // 处理整个图像，使用中间阈值（参数中为7.0）
-    auto& cfg = HoleDetection::PARTITION_PARAMS;
     Mat binary;
-    threshold(image, binary, cfg.mid_thresh, 255, THRESH_BINARY);
+    cv::threshold(image, binary, params.mid_thresh, 255, cv::THRESH_BINARY);
     return binary;
   }
 
-  auto& cfg = HoleDetection::PARTITION_PARAMS;
   int width = image.cols;
   Mat binary = Mat::zeros(image.size(), CV_8UC1);
 
-  int left_end = static_cast<int>(width * cfg.left_ratio);
-  int mid_end = static_cast<int>(width * (cfg.left_ratio + cfg.mid_ratio));
+  int left_end = static_cast<int>(width * params.left_ratio);
+  int mid_end =
+      static_cast<int>(width * (params.left_ratio + params.mid_ratio));
 
   int rows = image.rows;
 
   if (left_end > 0) {
     cv::parallel_for_(
         cv::Range(0, rows),
-        ParallelThresholdTask(image, binary, 0, left_end, cfg.left_thresh));
+        ParallelThresholdTask(image, binary, 0, left_end, params.left_thresh));
   }
   if (mid_end > left_end) {
     cv::parallel_for_(cv::Range(0, rows),
                       ParallelThresholdTask(image, binary, left_end, mid_end,
-                                            cfg.mid_thresh));
+                                            params.mid_thresh));
   }
   if (width > mid_end) {
-    cv::parallel_for_(
-        cv::Range(0, rows),
-        ParallelThresholdTask(image, binary, mid_end, width, cfg.right_thresh));
+    cv::parallel_for_(cv::Range(0, rows),
+                      ParallelThresholdTask(image, binary, mid_end, width,
+                                            params.right_thresh));
   }
 
   return binary;
@@ -338,7 +375,8 @@ struct HoleInfo {
 };
 
 static std::vector<HoleInfo> merge_close_holes(
-    std::vector<HoleInfo>& holes, int distance_threshold) noexcept {
+    std::vector<HoleInfo>& holes, int distance_threshold,
+    const HoleDetection::Config& config) noexcept {
   if (holes.size() <= 1) {
     return holes;
   }
@@ -401,13 +439,11 @@ static std::vector<HoleInfo> merge_close_holes(
       merged_hole.bottom_y = max_y;  // 设置下边界Y坐标
 
       // 计算实际尺寸
-      if (HoleDetection::ENABLE_REAL_WORLD_CALCULATION) {
-        merged_hole.real_width =
-            merged_width * HoleDetection::PIXEL_TO_MM_WIDTH;
-        merged_hole.real_height =
-            merged_height * HoleDetection::PIXEL_TO_MM_HEIGHT;
-        merged_hole.real_area = total_area * HoleDetection::PIXEL_TO_MM_WIDTH *
-                                HoleDetection::PIXEL_TO_MM_HEIGHT;
+      if (config.enable_real_world_calculation) {
+        merged_hole.real_width = merged_width * config.pixel_to_mm_width;
+        merged_hole.real_height = merged_height * config.pixel_to_mm_height;
+        merged_hole.real_area =
+            total_area * config.pixel_to_mm_width * config.pixel_to_mm_height;
         for (size_t idx : close_indices) {
           if (holes[idx].real_diameter > 0) {
             merged_hole.real_diameter =
@@ -436,27 +472,28 @@ static Mat preprocess_for_hole_detection(const Mat& processed_image) noexcept {
 }
 
 // Apply threshold to image
-static Mat threshold_image(const Mat& image, bool is_small_image) noexcept {
+static Mat threshold_image(const Mat& image, bool is_small_image,
+                           const HoleDetection::Config& config,
+                           const PartitionConfig& parsed_params) noexcept {
   // --- Adjust parameters for small images (like Python) ---
-  auto [left_ratio, mid_ratio, right_ratio, left_thresh, mid_thresh,
-        right_thresh] = HoleDetection::PARTITION_PARAMS;
+  PartitionConfig params = parsed_params;  // 使用解析后的参数
   if (is_small_image) {
     // 小图像使用统一的中间阈值
-    left_thresh = mid_thresh;
-    right_thresh = mid_thresh;
+    params.left_thresh = params.mid_thresh;
+    params.right_thresh = params.mid_thresh;
   }
 
   // --- Partitioned Threshold ---
   HOLE_DETECTION_TIMING_START(thresh);
-  Mat binary = apply_partitioned_threshold_parallel(image);
+  Mat binary = apply_partitioned_threshold_parallel(image, params);
   HOLE_DETECTION_TIMING_END(thresh, "    Thresholding:     ");
   return binary;
 }
 
 // Extract hole information from binary image
-static std::vector<HoleInfo> extract_holes(const Mat& image, const Mat& binary,
-                                           bool is_small_image,
-                                           bool skip_edge_detection) noexcept {
+static std::vector<HoleInfo> extract_holes(
+    const Mat& image, const Mat& binary, bool is_small_image,
+    bool skip_edge_detection, const HoleDetection::Config& config) noexcept {
   // --- Connected Components ---
   HOLE_DETECTION_TIMING_START(cc);
   Mat labels, stats, centroids;
@@ -465,7 +502,7 @@ static std::vector<HoleInfo> extract_holes(const Mat& image, const Mat& binary,
   HOLE_DETECTION_TIMING_END(cc, "    ConnectedComps:   ");
 
   // --- Adjust parameters for small images (like Python) ---
-  int current_min_area = is_small_image ? 1 : HoleDetection::MIN_DEFECT_AREA;
+  int current_min_area = is_small_image ? 1 : config.min_defect_area;
 
   // --- Collect holes ---
   std::vector<HoleInfo> hole_data;
@@ -496,9 +533,9 @@ static std::vector<HoleInfo> extract_holes(const Mat& image, const Mat& binary,
     // --- Edge filtering: only for large images ---
     bool near_edge = false;
     if (!skip_edge_detection) {
-      if (x < HoleDetection::EDGE_MARGIN || y < HoleDetection::EDGE_MARGIN ||
-          x + w > width - HoleDetection::EDGE_MARGIN ||
-          y + h > height - HoleDetection::EDGE_MARGIN) {
+      if (x < config.edge_margin || y < config.edge_margin ||
+          x + w > width - config.edge_margin ||
+          y + h > height - config.edge_margin) {
         near_edge = true;
       }
     }
@@ -525,17 +562,15 @@ static std::vector<HoleInfo> extract_holes(const Mat& image, const Mat& binary,
     hole.height = h;        // 设置高度
     hole.top_y = y;         // 设置上边界Y坐标
     hole.bottom_y = y + h;  // 设置下边界Y坐标
-    if (HoleDetection::ENABLE_REAL_WORLD_CALCULATION) {
+    if (config.enable_real_world_calculation) {
       hole.real_diameter =
-          equiv_diam *
-          HoleDetection::PIXEL_TO_MM_WIDTH;  // 使用宽度转换因子计算直径
-      hole.real_area = area * HoleDetection::PIXEL_TO_MM_WIDTH *
-                       HoleDetection::PIXEL_TO_MM_HEIGHT;  // 计算实际面积
+          equiv_diam * config.pixel_to_mm_width;  // 使用宽度转换因子计算直径
+      hole.real_area = area * config.pixel_to_mm_width *
+                       config.pixel_to_mm_height;  // 计算实际面积
       hole.real_width =
-          w * HoleDetection::PIXEL_TO_MM_WIDTH;  // 使用固定转换因子计算实际宽度
+          w * config.pixel_to_mm_width;  // 使用固定转换因子计算实际宽度
       hole.real_height =
-          h *
-          HoleDetection::PIXEL_TO_MM_HEIGHT;  // 使用固定转换因子计算实际高度
+          h * config.pixel_to_mm_height;  // 使用固定转换因子计算实际高度
     }
     hole_data.emplace_back(hole);
   }
@@ -544,14 +579,16 @@ static std::vector<HoleInfo> extract_holes(const Mat& image, const Mat& binary,
 }
 
 // Merge nearby holes
-static std::vector<HoleInfo> merge_holes(std::vector<HoleInfo>& hole_data,
-                                         bool is_small_image) noexcept {
+static std::vector<HoleInfo> merge_holes(
+    std::vector<HoleInfo>& hole_data, bool is_small_image,
+    const HoleDetection::Config& config) noexcept {
   int current_merge_distance =
-      is_small_image ? 5 : HoleDetection::MERGE_DISTANCE_THRESHOLD;
+      is_small_image ? 5 : config.merge_distance_threshold;
 
   // --- Merge close holes ---
   HOLE_DETECTION_TIMING_START(merge);
-  auto merged_hole_data = merge_close_holes(hole_data, current_merge_distance);
+  auto merged_hole_data =
+      merge_close_holes(hole_data, current_merge_distance, config);
   HOLE_DETECTION_TIMING_END(merge, "    Merging:          ");
 
   return merged_hole_data;
@@ -559,7 +596,8 @@ static std::vector<HoleInfo> merge_holes(std::vector<HoleInfo>& hole_data,
 
 // Create visualization images
 static std::pair<Mat, Mat> create_visualizations(
-    const Mat& image, std::vector<HoleInfo>& merged_hole_data) noexcept {
+    const Mat& image, std::vector<HoleInfo>& merged_hole_data,
+    const HoleDetection::Config& config) noexcept {
   // --- Visualization (with adaptive radius for small images) ---
   HOLE_DETECTION_TIMING_START(vis);
   Mat result_image;
@@ -606,7 +644,7 @@ static std::pair<Mat, Mat> create_visualizations(
     // 添加文本标注到两个图像上
     std::stringstream info_stream;
     info_stream << fixed << setprecision(1);
-    if (HoleDetection::ENABLE_REAL_WORLD_CALCULATION && hole.real_width > 0 &&
+    if (config.enable_real_world_calculation && hole.real_width > 0 &&
         hole.real_height > 0 && hole.real_area > 0) {
       // 显示真实尺寸（毫米），使用您提供的转换因子
       info_stream << fixed << setprecision(4);
@@ -695,9 +733,8 @@ static std::pair<Mat, Mat> create_visualizations(
                          (arrow_start.y + arrow_end.y) / 2);
 
           std::stringstream dist_stream;
-          if (HoleDetection::ENABLE_REAL_WORLD_CALCULATION) {
-            double real_dist =
-                vertical_distance * HoleDetection::PIXEL_TO_MM_HEIGHT;
+          if (config.enable_real_world_calculation) {
+            double real_dist = vertical_distance * config.pixel_to_mm_height;
             dist_stream << fixed << setprecision(2) << real_dist << "mm";
           } else {
             dist_stream << vertical_distance << "px";
@@ -785,9 +822,10 @@ static void save_results(const Mat& result_image,
 }
 
 // load from local directory for debug
-static void process_single_image_impl(const Mat& processed_image,
-                                      const std::string& image_path,
-                                      const std::string& output_dir) noexcept {
+static void process_single_image_impl(
+    const Mat& processed_image, const std::string& image_path,
+    const std::string& output_dir, const HoleDetection::Config& config,
+    const PartitionConfig& parsed_params) noexcept {
   HOLE_DETECTION_TIMING_START(total);
 
   // --- Preprocessing ---
@@ -798,20 +836,20 @@ static void process_single_image_impl(const Mat& processed_image,
   bool skip_edge_detection = (image.rows < 1000 || image.cols < 1000);
 
   // --- Threshold ---
-  Mat binary = threshold_image(image, is_small_image);
+  Mat binary = threshold_image(image, is_small_image, config, parsed_params);
 
   // --- Extract holes ---
   auto hole_data =
-      extract_holes(image, binary, is_small_image, skip_edge_detection);
+      extract_holes(image, binary, is_small_image, skip_edge_detection, config);
 
   // --- Merge holes ---
-  auto merged_hole_data = merge_holes(hole_data, is_small_image);
+  auto merged_hole_data = merge_holes(hole_data, is_small_image, config);
 
   // 如果是视频帧处理，则不需要保存结果图像
   if (!image_path.empty() && !output_dir.empty()) {
     // --- Create visualizations ---
     auto [contour_visualization, bbox_visualization] =
-        create_visualizations(image, merged_hole_data);
+        create_visualizations(image, merged_hole_data, config);
 
     // Create base result image
     Mat result_image;
@@ -839,8 +877,10 @@ static void process_single_image_impl(const Mat& processed_image,
 }
 
 // 从文件路径加载图像并处理的接口
-static void process_single_image(const std::string& image_path,
-                                 const std::string& output_dir) noexcept {
+static void process_single_image(
+    const std::string& image_path, const std::string& output_dir,
+    const HoleDetection::Config& config,
+    const PartitionConfig& parsed_params) noexcept {
   // --- Load image ---
   HOLE_DETECTION_TIMING_START(load);
   Mat image = imread(image_path, IMREAD_GRAYSCALE);
@@ -852,59 +892,99 @@ static void process_single_image(const std::string& image_path,
   }
 
   // 调用公共实现函数
-  process_single_image_impl(image, image_path, output_dir);
+  process_single_image_impl(image, image_path, output_dir, config,
+                            parsed_params);
 }
 
 // 从Mat对象处理图像的接口（用于视频帧处理）
-static void process_single_image(const Mat& frame) noexcept {
+static void process_single_image(
+    const Mat& frame, const HoleDetection::Config& config,
+    const PartitionConfig& parsed_params) noexcept {
   // 对于视频帧，我们不需要文件路径和输出目录
   std::string dummy_path = "";
   std::string dummy_output_dir = "";
-  process_single_image_impl(frame, dummy_path, dummy_output_dir);
+  process_single_image_impl(frame, dummy_path, dummy_output_dir, config,
+                            parsed_params);
 }
 
-double HoleDetection::DEFAULT_PIXEL_PER_MM = 50.0;
-bool HoleDetection::ENABLE_REAL_WORLD_CALCULATION = true;
-int HoleDetection::MIN_DEFECT_AREA = 1;
-int HoleDetection::EDGE_MARGIN = 10;
-int HoleDetection::MERGE_DISTANCE_THRESHOLD = 20;
-double HoleDetection::PIXEL_TO_MM_WIDTH = 0.05586;
-double HoleDetection::PIXEL_TO_MM_HEIGHT = 0.061;
-PartitionConfig HoleDetection::PARTITION_PARAMS{0.3, 0.4, 0.3, 20, 23, 20};
+// 新增：从CapturedFrame处理图像的接口，这是process()函数实际调用的版本
+static void process_single_image(
+    const CapturedFrame& frame, const HoleDetection::Config& config,
+    const PartitionConfig& parsed_params) noexcept {
+  // 转换为Mat并调用通用实现
+  std::string dummy_path = "";
+  std::string dummy_output_dir = "";
+  Mat image = CapturedFrame2Mat(frame);
+  process_single_image_impl(image, dummy_path, dummy_output_dir, config,
+                            parsed_params);
+}
+
+void HoleDetection::parse_partition_params() {
+  std::stringstream ss(config_.partition_params);
+  ss >> parsed_params_.left_ratio >> parsed_params_.mid_ratio >>
+      parsed_params_.right_ratio >> parsed_params_.left_thresh >>
+      parsed_params_.mid_thresh >> parsed_params_.right_thresh;
+}
 
 HoleDetection::HoleDetection() {
+  config_.pixel_to_mm_height = 0.061;  // 修正默认值
+  config_.partition_params = "0.3,0.4,0.3,20,23,20";
+  parse_partition_params();  // 初始化时解析
+
+  // 初始化配置映射表
   configMap_ = {
-      {"DEFAULT_PIXEL_PER_MM",
-       [](const std::string& value) {
-         DEFAULT_PIXEL_PER_MM = std::stof(value);
+      {"pixel_per_mm",
+       [this](const std::string& value) {
+         std::unique_lock lock(config_mutex_);
+         config_.pixel_per_mm = std::stof(value);
        }},
-      {"ENABLE_REAL_WORLD_CALCULATION",
-       [](const std::string& value) {
-         ENABLE_REAL_WORLD_CALCULATION = std::stoi(value) != 0;
+      {"enable_real_world_calculation",
+       [this](const std::string& value) {
+         std::unique_lock lock(config_mutex_);
+         config_.enable_real_world_calculation = std::stoi(value) != 0;
        }},
-      {"MIN_DEFECT_AREA",
-       [](const std::string& value) { MIN_DEFECT_AREA = std::stoi(value); }},
-      {"EDGE_MARGIN",
-       [](const std::string& value) { EDGE_MARGIN = std::stoi(value); }},
-      {"MERGE_DISTANCE_THRESHOLD",
-       [](const std::string& value) {
-         MERGE_DISTANCE_THRESHOLD = std::stoi(value);
+      {"min_defect_area",
+       [this](const std::string& value) {
+         std::unique_lock lock(config_mutex_);
+         config_.min_defect_area = std::stoi(value);
        }},
-      {"PIXEL_TO_MM_WIDTH",
-       [](const std::string& value) { PIXEL_TO_MM_WIDTH = std::stof(value); }},
-      {"PIXEL_TO_MM_HEIGHT",
-       [](const std::string& value) { PIXEL_TO_MM_HEIGHT = std::stof(value); }},
-      {"PARTITION_PARAMS",
-       [](const std::string& value) {
-         std::stringstream ss(value);
-         ss >> HoleDetection::PARTITION_PARAMS.left_ratio >>
-             HoleDetection::PARTITION_PARAMS.mid_ratio >>
-             HoleDetection::PARTITION_PARAMS.right_ratio >>
-             HoleDetection::PARTITION_PARAMS.left_thresh >>
-             HoleDetection::PARTITION_PARAMS.mid_thresh >>
-             HoleDetection::PARTITION_PARAMS.right_thresh;
+      {"edge_margin",
+       [this](const std::string& value) {
+         std::unique_lock lock(config_mutex_);
+         config_.edge_margin = std::stoi(value);
+       }},
+      {"merge_distance_threshold",
+       [this](const std::string& value) {
+         std::unique_lock lock(config_mutex_);
+         config_.merge_distance_threshold = std::stoi(value);
+       }},
+      {"pixel_to_mm_width",
+       [this](const std::string& value) {
+         std::unique_lock lock(config_mutex_);
+         config_.pixel_to_mm_width = std::stof(value);
+       }},
+      {"pixel_to_mm_height",
+       [this](const std::string& value) {
+         std::unique_lock lock(config_mutex_);
+         config_.pixel_to_mm_height = std::stof(value);
+       }},
+      {"partition_params",
+       [this](const std::string& value) {
+         std::unique_lock lock(config_mutex_);
+         config_.partition_params = value;
+         parse_partition_params();
        }},
   };
+}
+
+HoleDetection::HoleDetection(const Config& cfg) : config_(cfg) {
+  parse_partition_params();  // 初始化时解析
+}
+
+void HoleDetection::update_config(const Config& new_cfg) {
+  std::unique_lock lock(config_mutex_);
+  config_ = new_cfg;
+  parse_partition_params();  // 热更新时重新解析
 }
 
 void HoleDetection::process(const CapturedFrame& frame) {
@@ -914,8 +994,18 @@ void HoleDetection::process(const CapturedFrame& frame) {
     return;
   }
 
-  double pixel_per_mm =
-      ENABLE_REAL_WORLD_CALCULATION ? DEFAULT_PIXEL_PER_MM : -1;
+  // 获取配置的本地副本以保证线程安全
+  Config local_config;
+  PartitionConfig local_parsed_params;
+  {
+    std::shared_lock lock(config_mutex_);
+    local_config = config_;
+    local_parsed_params = parsed_params_;  // 使用解析后的结构体
+  }
+
+  double pixel_per_mm = local_config.enable_real_world_calculation
+                            ? local_config.pixel_per_mm
+                            : -1;
   if (pixel_per_mm > 0) {
     HOLE_DETECTION_LOG("Using calibration parameters: "
                        << fixed << setprecision(2) << pixel_per_mm
@@ -924,7 +1014,44 @@ void HoleDetection::process(const CapturedFrame& frame) {
 
   HOLE_DETECTION_TIMING_START(total);
   // 直接处理CapturedFrame，不再需要保存结果到文件
-  process_single_image(DvpUtils::CapturedFrame2Mat(frame));
+  process_single_image(CapturedFrame2Mat(frame), local_config,
+                       local_parsed_params);
 
   HOLE_DETECTION_TIMING_END(total, "Total time: ");
+}
+
+std::vector<AlgoParamInfo> HoleDetection::get_parameter_info() const {
+  // 获取配置的本地副本以保证线程安全
+  Config local_config;
+  {
+    std::shared_lock lock(config_mutex_);
+    local_config = config_;  // 返回原始字符串（用于 UI 显示和保存）
+  }
+
+  return {{"pixel_per_mm", "float", "像素/毫米转换因子", "50.0",
+           std::to_string(local_config.pixel_per_mm)},
+          {"enable_real_world_calculation", "bool", "是否启用真实尺寸计算", "1",
+           local_config.enable_real_world_calculation ? "1" : "0"},
+          {"min_defect_area", "int", "最小缺陷面积（像素）", "1",
+           std::to_string(local_config.min_defect_area)},
+          {"edge_margin", "int", "边缘过滤边距（像素）", "10",
+           std::to_string(local_config.edge_margin)},
+          {"merge_distance_threshold", "int", "孔洞合并距离阈值（像素）", "20",
+           std::to_string(local_config.merge_distance_threshold)},
+          {"pixel_to_mm_width", "float", "水平方向像素/毫米", "0.05586",
+           std::to_string(local_config.pixel_to_mm_width)},
+          {"pixel_to_mm_height", "float", "垂直方向像素/毫米", "0.061",
+           std::to_string(local_config.pixel_to_mm_height)},
+          {"partition_params", "string",
+           "分区配置（left_ratio,mid_ratio,right_ratio,left_thresh,mid_thresh,"
+           "right_thresh）",
+           "0.3,0.4,0.3,20,23,20",
+           local_config.partition_params}};  // 直接返回字符串
+}
+
+std::vector<AlgoSignalInfo> HoleDetection::get_signal_info() const {
+  return {{"raw", "原始灰度图像"},
+          {"preprocessed", "预处理后图像（裁剪+去噪）"},
+          {"binary", "二值化结果（分区阈值）"},
+          {"defect_map", "缺陷标注图（含合并孔洞）"}};
 }

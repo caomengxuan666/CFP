@@ -67,10 +67,6 @@ target_include_directories(${TARGET_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/DVP_SDK/include
 )
 
-target_sources(${TARGET_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../DvpCapture.cpp)
-target_sources(${TARGET_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../DvpCameraBuilder.cpp)
-target_sources(${TARGET_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../DvpEventManager.cpp)
-
 # 链接所需库
 target_link_libraries(${TARGET_NAME} PRIVATE 
     Qt6::Core
@@ -83,6 +79,7 @@ target_link_libraries(${TARGET_NAME} PRIVATE
     QtAntDesign
     DVP2::DVPCamera 
     DVP2::dvpir
+    DVPDETECT
 )
 
 # Windows特定链接

@@ -1,12 +1,39 @@
+/* 
+ *  Copyright © 2025 [caomengxuan666]
+ *  
+ *  Permission is hereby granted, free of charge, to any person obtaining a copy
+ *  of this software and associated documentation files (the “Software”), to deal
+ *  in the Software without restriction, including without limitation the rights
+ *  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ *  copies of the Software, and to permit persons to whom the Software is furnished
+ *  to do so, subject to the following conditions:
+ *  
+ *  The above copyright notice and this permission notice shall be included in all
+ *  copies or substantial portions of the Software.
+ *  
+ *  THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ *  SOFTWARE.
+ *  
+ *  - File: example.cpp
+ *  - CreationYear: 2025
+ *  - Date: Sat Dec 20 2025
+ *  - Username: Administrator
+ *  - CopyrightYear: 2025
+ */
+
 #include <iostream>
-#include <memory>
 
 #include "DvpCameraBuilder.hpp"
 #include "DvpEventManager.hpp"
 #include "FrameProcessor.hpp"
 #include "algo/AlgoBase.hpp"
-#include "algo/EdgeDetection.hpp"
 #include "algo/HoleDetection.hpp"
+#include "config/ConfigManager.hpp"
 
 // We do not support use simple function as FrameProcessor directly,
 // We had better use a Class with operator() to process frame.
@@ -17,14 +44,20 @@ void defect_processor(const CapturedFrame& frame) {
 }
 
 int main() {
+  auto& config_manager = config::ConfigManager::instance();
+  config_manager.start();
+  auto initial_config = config_manager.get_current_config();
   // we create some algorithms here bro.
-  auto holeDetection = std::make_shared<algo::HoleDetection>();
-  auto edgeDetection = std::make_shared<algo::EdgeDetection>();
 
+  // we automatically bind the observer with the up-to-date Algo' config.
+  // In this @create_algorithm function, we extract the config and then
+  // extract the config and then create the algorithm.
+  auto holeDetection = config_manager.create_algorithm<algo::HoleDetection>();
   // some parameters configuration
-  holeDetection->configure("threshold", "0.7");
-  edgeDetection->configure("lowThreshold", "100");
-  edgeDetection->configure("ratio", "2.5");
+
+  // holeDetection->configure("threshold", "0.7");
+  // edgeDetection->configure("lowThreshold", "100");
+  // edgeDetection->configure("ratio", "2.5");
 
   // Solution 1: Using function  (I have used a template function and class to
   // wrap the function into a class)

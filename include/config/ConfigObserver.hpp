@@ -1,4 +1,4 @@
-/* 
+/*
  *  Copyright © 2025 [caomengxuan666]
  *  
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -19,38 +19,22 @@
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  *  SOFTWARE.
  *  
- *  - File: main.cpp
+ *  - File: ConfigObserver.hpp
  *  - CreationYear: 2025
  *  - Date: Sat Dec 20 2025
  *  - Username: Administrator
  *  - CopyrightYear: 2025
  */
 
-#include <QDir>
-#include <QFontDatabase>
-#include <QtWidgets/QApplication>
+#pragma once
 
-#include "DvpMainWindow.h"
+namespace config {
 
-int main(int argc, char *argv[]) {
-  QApplication a(argc, argv);
-  a.setOrganizationName("Organization");
-  a.setApplicationName("DvpDetect");
+struct GlobalConfig;
+class ConfigObserver {
+ public:
+  virtual ~ConfigObserver() = default;
+  virtual void onConfigReloaded(const GlobalConfig& new_config) = 0;
+};
 
-  // 设置高DPI支持
-  QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-  QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
-
-  // 加载字体
-  QDir dir("fonts");
-  if (dir.exists()) {
-    const QStringList fonts = dir.entryList(QStringList("*.ttf"));
-    for (const QString &font : fonts) {
-      QFontDatabase::addApplicationFont(dir.filePath(font));
-    }
-  }
-
-  DvpMainWindow w;
-  w.show();
-  return a.exec();
-}
+}  // namespace config

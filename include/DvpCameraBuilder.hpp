@@ -1,3 +1,31 @@
+/*
+ *  Copyright © 2025 [caomengxuan666]
+ *  
+ *  Permission is hereby granted, free of charge, to any person obtaining a copy
+ *  of this software and associated documentation files (the “Software”), to deal
+ *  in the Software without restriction, including without limitation the rights
+ *  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ *  copies of the Software, and to permit persons to whom the Software is furnished
+ *  to do so, subject to the following conditions:
+ *  
+ *  The above copyright notice and this permission notice shall be included in all
+ *  copies or substantial portions of the Software.
+ *  
+ *  THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ *  SOFTWARE.
+ *  
+ *  - File: DvpCameraBuilder.hpp
+ *  - CreationYear: 2025
+ *  - Date: Sat Dec 20 2025
+ *  - Username: Administrator
+ *  - CopyrightYear: 2025
+ */
+
 // include/DvpCameraBuilder.hpp
 #pragma once
 #include <memory>
@@ -15,6 +43,12 @@ class DvpCameraBuilder {
   // 存在一个fallback机制：如果指定的ID或名称无法打开相机，则尝试使用枚举索引打开第一个可用相机
   static DvpCameraBuilder fromUserId(const std::string& id);
   static DvpCameraBuilder fromFriendlyName(const std::string& name);
+
+  // DvpConfig相当于不依赖任何头文件的配置类
+  // 为了保证方便使用DvpConfig与外界交互
+  // 我们的内部Config是真正使用DVP相机的配置类
+  // ==== 转换成方便给外界读的不含内部实现的DVP配置文件 ====
+  DvpConfig toDvpConfig() const;
 
   // === 链式配置 ===
   DvpCameraBuilder& roi(int x, int y, int w, int h);

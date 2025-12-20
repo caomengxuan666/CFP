@@ -19,38 +19,50 @@
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  *  SOFTWARE.
  *  
- *  - File: main.cpp
+ *  - File: ImageSignalBus.cpp
  *  - CreationYear: 2025
  *  - Date: Sat Dec 20 2025
  *  - Username: Administrator
  *  - CopyrightYear: 2025
  */
 
-#include <QDir>
-#include <QFontDatabase>
-#include <QtWidgets/QApplication>
+// ImageSignalBus.cpp
+#include "ImageSignalBus.hpp"  //NOLINT
 
-#include "DvpMainWindow.h"
+#include <string>
+#include <utility>
+#include <vector>
 
-int main(int argc, char *argv[]) {
-  QApplication a(argc, argv);
-  a.setOrganizationName("Organization");
-  a.setApplicationName("DvpDetect");
+// For mat
+#include <opencv2/core/mat.hpp>
 
-  // 设置高DPI支持
-  QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-  QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+void ImageSignalBus::declare_signal(const std::string& signal_name) {
+  std::unique_lock<std::shared_mutex> lock(mutex_);
+  // 声明信号（即使没有订阅者也要记录，便于 UI 发现）
+  if (subscribers_.find(signal_name) == subscribers_.end()) {
+    subscribers_[signal_name] = std::vector<ImageCallback>();
+  }
+}
 
-  // 加载字体
-  QDir dir("fonts");
-  if (dir.exists()) {
-    const QStringList fonts = dir.entryList(QStringList("*.ttf"));
-    for (const QString &font : fonts) {
-      QFontDatabase::addApplicationFont(dir.filePath(font));
-    }
+void ImageSignalBus::subscribe(const std::string& signal_name,
+                               ImageCallback callback) {
+  std::unique_lock<std::shared_mutex> lock(mutex_);
+  subscribers_[signal_name].push_back(std::move(callback));
+}
+
+void ImageSignalBus::emit(const std::string& signal_name, const cv::Mat& img) {
+  if (img.empty()) {
+    return;
   }
 
-  DvpMainWindow w;
-  w.show();
-  return a.exec();
+  std::shared_lock<std::shared_mutex> lock(mutex_);
+  auto it = subscribers_.find(signal_name);
+  if (it != subscribers_.end()) {
+    // 对每个订阅者发送**深拷贝**的图像
+    for (const auto& callback : it->second) {
+      if (callback) {
+        callback(img.clone());  // 深拷贝确保生命周期安全
+      }
+    }
+  }
 }

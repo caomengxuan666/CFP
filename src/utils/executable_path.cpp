@@ -19,38 +19,60 @@
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  *  SOFTWARE.
  *  
- *  - File: main.cpp
+ *  - File: executable_path.cpp
  *  - CreationYear: 2025
  *  - Date: Sat Dec 20 2025
  *  - Username: Administrator
  *  - CopyrightYear: 2025
  */
 
-#include <QDir>
-#include <QFontDatabase>
-#include <QtWidgets/QApplication>
+#include "utils/executable_path.h"
 
-#include "DvpMainWindow.h"
+#include <string>
 
-int main(int argc, char *argv[]) {
-  QApplication a(argc, argv);
-  a.setOrganizationName("Organization");
-  a.setApplicationName("DvpDetect");
+#ifdef _WIN32
+#include <shlwapi.h>  // PathRemoveFileSpec
+#include <windows.h>
+#pragma comment(lib, "shlwapi.lib")
+#else
+#include <libgen.h>
+#include <limits.h>
+#include <unistd.h>
 
-  // 设置高DPI支持
-  QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-  QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+#include <string>
 
-  // 加载字体
-  QDir dir("fonts");
-  if (dir.exists()) {
-    const QStringList fonts = dir.entryList(QStringList("*.ttf"));
-    for (const QString &font : fonts) {
-      QFontDatabase::addApplicationFont(dir.filePath(font));
-    }
+#endif
+
+namespace DvpUtils {
+
+std::string getExecutablePath() {
+#ifdef _WIN32
+  char path[MAX_PATH];
+  if (GetModuleFileNameA(nullptr, path, MAX_PATH) == 0) {
+    return "";
+  }
+  return std::string(path);
+#else
+  char result[PATH_MAX];
+  ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
+  return count != -1 ? std::string(result, count) : "";
+#endif
+}
+
+std::string getExecutableDirectory() {
+  std::string exec_path = getExecutablePath();
+  if (exec_path.empty()) {
+    return "";
   }
 
-  DvpMainWindow w;
-  w.show();
-  return a.exec();
+#ifdef _WIN32
+  char dir[MAX_PATH];
+  strcpy_s(dir, exec_path.c_str());
+  PathRemoveFileSpecA(dir);
+  return std::string(dir);
+#else
+  return std::string(dirname(const_cast<char *>(exec_path.c_str())));
+#endif
 }
+
+}  // namespace DvpUtils

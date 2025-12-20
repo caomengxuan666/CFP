@@ -1,4 +1,4 @@
-/* 
+/*
  *  Copyright © 2025 [caomengxuan666]
  *  
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -19,38 +19,23 @@
  *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  *  SOFTWARE.
  *  
- *  - File: main.cpp
+ *  - File: executable_path.h
  *  - CreationYear: 2025
  *  - Date: Sat Dec 20 2025
  *  - Username: Administrator
  *  - CopyrightYear: 2025
  */
 
-#include <QDir>
-#include <QFontDatabase>
-#include <QtWidgets/QApplication>
+// src/core/executable_path.h
+#pragma once
+#include <string>
 
-#include "DvpMainWindow.h"
+namespace DvpUtils {
 
-int main(int argc, char *argv[]) {
-  QApplication a(argc, argv);
-  a.setOrganizationName("Organization");
-  a.setApplicationName("DvpDetect");
+// get the full path of the currently running executable
+std::string getExecutablePath();
 
-  // 设置高DPI支持
-  QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-  QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
+// get the directory of the currently running executable
+std::string getExecutableDirectory();
 
-  // 加载字体
-  QDir dir("fonts");
-  if (dir.exists()) {
-    const QStringList fonts = dir.entryList(QStringList("*.ttf"));
-    for (const QString &font : fonts) {
-      QFontDatabase::addApplicationFont(dir.filePath(font));
-    }
-  }
-
-  DvpMainWindow w;
-  w.show();
-  return a.exec();
-}
+}  // namespace DvpUtils

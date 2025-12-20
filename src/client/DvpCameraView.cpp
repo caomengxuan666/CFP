@@ -1,3 +1,31 @@
+/* 
+ *  Copyright © 2025 [caomengxuan666]
+ *  
+ *  Permission is hereby granted, free of charge, to any person obtaining a copy
+ *  of this software and associated documentation files (the “Software”), to deal
+ *  in the Software without restriction, including without limitation the rights
+ *  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ *  copies of the Software, and to permit persons to whom the Software is furnished
+ *  to do so, subject to the following conditions:
+ *  
+ *  The above copyright notice and this permission notice shall be included in all
+ *  copies or substantial portions of the Software.
+ *  
+ *  THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ *  SOFTWARE.
+ *  
+ *  - File: DvpCameraView.cpp
+ *  - CreationYear: 2025
+ *  - Date: Sat Dec 20 2025
+ *  - Username: Administrator
+ *  - CopyrightYear: 2025
+ */
+
 #include "DvpCameraView.h"
 
 #include <QApplication>
@@ -21,7 +49,6 @@
 #include "AntTreeView.h"
 #include "DvpCameraDelegate.h"
 #include "DvpCameraModel.h"
-#include "FlowLayout.h"
 
 DvpCameraView::DvpCameraView(QWidget* parent)
     : QWidget(parent),
@@ -69,6 +96,16 @@ void DvpCameraView::setupPreviewArea() {
   layout->addWidget(titleLabel);
 
   // 空白占位区域 - 替代原有的视频预览内容
+  // TODO 我们需要在这里实现真正的视频预览区域，从队列中获取图像
+  /*
+   * 我的计划是这样的：用不同的信号源来进行代表，我们可以新增信号源
+   * 我们把这个分成：新增相机，以及新增信号源两个步骤，
+   * 一个相机可以获取多个信号源，比如说原始图像，以及每个处理过的图像
+   * 这也就意味着我在SDK里面需要提供一个接口，每个处理后的图像都可以通过这个接口被返回显示
+   * 我的想法就是说，原始图像是在图像队列里面的，我们取出来做图像算法处理之后最终结果在另一个队列中
+   * 那么在这个过程总如果我们需要DEBUG，我们必须在每个SDK的算法步骤中内置AOP插入点，获取每一个算法处理后的图像
+   * 我们的SDK必须是
+   */
   QWidget* placeholder = new QWidget;
   placeholder->setStyleSheet(
       "background-color: #222222; border: 1px solid #444444; border-radius: "
@@ -76,18 +113,6 @@ void DvpCameraView::setupPreviewArea() {
   placeholder->setMinimumHeight(400);
   placeholder->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
   layout->addWidget(placeholder);
-}
-
-void DvpCameraView::addNewSignalSource() {
-  // 直接创建新的信号源，不再弹出对话框
-  QString signalName = "新信号源";
-
-  // 查找当前的FlowLayout
-  QWidget* containerWidget = previewArea->findChild<QWidget*>();
-  if (!containerWidget) return;
-
-  FlowLayout* flowLayout = static_cast<FlowLayout*>(containerWidget->layout());
-  if (!flowLayout) return;
 }
 
 void DvpCameraView::loadVisionParams() { cameraModel->loadVisionParams(); }

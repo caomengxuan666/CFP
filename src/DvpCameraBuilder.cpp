@@ -1,12 +1,58 @@
+/* 
+ *  Copyright © 2025 [caomengxuan666]
+ *  
+ *  Permission is hereby granted, free of charge, to any person obtaining a copy
+ *  of this software and associated documentation files (the “Software”), to deal
+ *  in the Software without restriction, including without limitation the rights
+ *  to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ *  copies of the Software, and to permit persons to whom the Software is furnished
+ *  to do so, subject to the following conditions:
+ *  
+ *  The above copyright notice and this permission notice shall be included in all
+ *  copies or substantial portions of the Software.
+ *  
+ *  THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ *  SOFTWARE.
+ *  
+ *  - File: DvpCameraBuilder.cpp
+ *  - CreationYear: 2025
+ *  - Date: Sat Dec 20 2025
+ *  - Username: Administrator
+ *  - CopyrightYear: 2025
+ */
+
 /*
- *  This is the default license template.
+ *  Copyright © 2025 [caomengxuan666]
  *
- *  File: DvpCameraBuilder.cpp
- *  Author: Administrator
- *  Copyright (c) 2025 Administrator
+ *  Permission is hereby granted, free of charge, to any person obtaining a copy
+ *  of this software and associated documentation files (the “Software”), to
+ * deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
  *
- *  To edit this license information: Press Ctrl+Shift+P and press 'Create new
- * License Template...'.
+ *  The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ *  THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ *
+ *  - File: DvpCameraBuilder.cpp
+ *  - Path: d:\codespace\DvpDetect\src\DvpCameraBuilder.cpp
+ *  - CreationYear: 2025
+ *  - Date: Sat Dec 20 2025
+ *  - Username: Administrator
+ *  - CopyrightYear: 2025
  */
 
 #include "DvpCameraBuilder.hpp"
@@ -33,6 +79,151 @@ DvpCameraBuilder DvpCameraBuilder::fromFriendlyName(const std::string& name) {
   builder.config_.friendly_name = name;
   builder.config_.use_user_id = false;
   return builder;
+}
+
+DvpConfig DvpCameraBuilder::toDvpConfig() const {
+  DvpConfig cfg;
+
+  // ROI
+  if (config_.roi.has_value()) {
+    cfg.roi_x = config_.roi->X;
+    cfg.roi_y = config_.roi->Y;
+    cfg.roi_w = config_.roi->W;
+    cfg.roi_h = config_.roi->H;
+  }
+
+  // 曝光/增益
+  if (config_.exposure.has_value()) cfg.exposure_us = *config_.exposure;
+  if (config_.gain.has_value()) cfg.gain = *config_.gain;
+
+  // 触发模式
+  if (config_.trigger_mode.has_value())
+    cfg.trigger_mode = *config_.trigger_mode;
+  if (config_.hardware_isp.has_value())
+    cfg.hardware_isp = *config_.hardware_isp;
+
+  // 自动曝光
+  if (config_.auto_exposure.has_value())
+    cfg.auto_exposure = *config_.auto_exposure;
+  if (config_.auto_gain.has_value()) cfg.auto_gain = *config_.auto_gain;
+  if (config_.ae_target_brightness.has_value())
+    cfg.ae_target_brightness = *config_.ae_target_brightness;
+
+  // 抗频闪
+  if (config_.anti_flicker_mode.has_value())
+    cfg.anti_flicker_mode = *config_.anti_flicker_mode;
+
+  // 采集模式
+  if (config_.acquisition_mode.has_value())
+    cfg.acquisition_mode = *config_.acquisition_mode;
+
+  // 曝光范围
+  if (config_.exposure_min.has_value())
+    cfg.exposure_min_us = *config_.exposure_min;
+  if (config_.exposure_max.has_value())
+    cfg.exposure_max_us = *config_.exposure_max;
+
+  // 增益范围
+  if (config_.gain_min.has_value()) cfg.gain_min = *config_.gain_min;
+  if (config_.gain_max.has_value()) cfg.gain_max = *config_.gain_max;
+
+  // 图像增强
+  if (config_.contrast.has_value()) cfg.contrast = *config_.contrast;
+  if (config_.gamma.has_value()) cfg.gamma = *config_.gamma;
+  if (config_.saturation.has_value()) cfg.saturation = *config_.saturation;
+  if (config_.sharpness_enable.has_value())
+    cfg.sharpness_enable = *config_.sharpness_enable;
+  if (config_.sharpness.has_value()) cfg.sharpness = *config_.sharpness;
+
+  // 图像处理
+  if (config_.inverse_state.has_value())
+    cfg.inverse_state = *config_.inverse_state;
+  if (config_.flip_horizontal_state.has_value())
+    cfg.flip_horizontal_state = *config_.flip_horizontal_state;
+  if (config_.flip_vertical_state.has_value())
+    cfg.flip_vertical_state = *config_.flip_vertical_state;
+  if (config_.rotate_state.has_value())
+    cfg.rotate_state = *config_.rotate_state;
+  if (config_.rotate_opposite.has_value())
+    cfg.rotate_opposite = *config_.rotate_opposite;
+  if (config_.black_level.has_value()) cfg.black_level = *config_.black_level;
+  if (config_.color_temperature.has_value())
+    cfg.color_temperature = *config_.color_temperature;
+  if (config_.flat_field_state.has_value())
+    cfg.flat_field_state = *config_.flat_field_state;
+  if (config_.defect_fix_state.has_value())
+    cfg.defect_fix_state = *config_.defect_fix_state;
+
+  // 新增参数
+  if (config_.mono_state.has_value()) cfg.mono_state = *config_.mono_state;
+  if (config_.ae_roi.has_value()) {
+    cfg.ae_roi_x = config_.ae_roi->X;
+    cfg.ae_roi_y = config_.ae_roi->Y;
+    cfg.ae_roi_w = config_.ae_roi->W;
+    cfg.ae_roi_h = config_.ae_roi->H;
+  }
+  if (config_.awb_roi.has_value()) {
+    cfg.awb_roi_x = config_.awb_roi->X;
+    cfg.awb_roi_y = config_.awb_roi->Y;
+    cfg.awb_roi_w = config_.awb_roi->W;
+    cfg.awb_roi_h = config_.awb_roi->H;
+  }
+  if (config_.cooler_state.has_value())
+    cfg.cooler_state = *config_.cooler_state;
+  if (config_.buffer_queue_size.has_value())
+    cfg.buffer_queue_size = *config_.buffer_queue_size;
+  if (config_.stream_flow_ctrl_sel.has_value())
+    cfg.stream_flow_ctrl_sel = *config_.stream_flow_ctrl_sel;
+  if (config_.link_timeout.has_value())
+    cfg.link_timeout = *config_.link_timeout;
+
+  // 白平衡
+  if (config_.awb_operation.has_value())
+    cfg.awb_operation = *config_.awb_operation;
+
+  // 触发相关
+  if (config_.trigger_activation.has_value())
+    cfg.trigger_activation = *config_.trigger_activation;
+  if (config_.trigger_count.has_value())
+    cfg.trigger_count = *config_.trigger_count;
+  if (config_.trigger_debouncer.has_value())
+    cfg.trigger_debouncer = *config_.trigger_debouncer;
+  if (config_.strobe_source.has_value())
+    cfg.strobe_source = *config_.strobe_source;
+  if (config_.strobe_delay.has_value())
+    cfg.strobe_delay = *config_.strobe_delay;
+  if (config_.strobe_duration.has_value())
+    cfg.strobe_duration = *config_.strobe_duration;
+
+  // 线扫相机
+  if (config_.line_trig_enable.has_value())
+    cfg.line_trig_enable = *config_.line_trig_enable;
+  if (config_.line_trig_source.has_value())
+    cfg.line_trig_source = *config_.line_trig_source;
+  if (config_.line_trig_filter.has_value())
+    cfg.line_trig_filter = *config_.line_trig_filter;
+  if (config_.line_trig_edge_sel.has_value())
+    cfg.line_trig_edge_sel = *config_.line_trig_edge_sel;
+  if (config_.line_trig_delay.has_value())
+    cfg.line_trig_delay = *config_.line_trig_delay;
+  if (config_.line_trig_debouncer.has_value())
+    cfg.line_trig_debouncer = *config_.line_trig_debouncer;
+
+  // 高级参数
+  if (config_.acquisition_frame_rate.has_value())
+    cfg.acquisition_frame_rate = *config_.acquisition_frame_rate;
+  if (config_.acquisition_frame_rate_enable.has_value())
+    cfg.acquisition_frame_rate_enable = *config_.acquisition_frame_rate_enable;
+  if (config_.flat_field_enable.has_value())
+    cfg.flat_field_enable = *config_.flat_field_enable;
+
+  // 触发源/延迟
+  if (config_.trigger_source.has_value())
+    cfg.trigger_source = *config_.trigger_source;
+  if (config_.trigger_delay.has_value())
+    cfg.trigger_delay_us = *config_.trigger_delay;
+
+  return cfg;
 }
 
 // 链式配置方法
@@ -631,6 +822,9 @@ std::unique_ptr<DvpCapture> DvpCameraBuilder::build() {
 
   // 创建捕获对象
   auto capture = std::make_unique<DvpCapture>(handle);
+
+  // 将builder的内部配置文件转换成外部可读，并且传递给捕获对象
+  capture->set_config(toDvpConfig());
 
   // 注册帧处理器（我们只使用最后一个）
   if (!config_.frame_processors.empty()) {
