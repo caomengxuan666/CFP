@@ -4,6 +4,7 @@ import subprocess
 import multiprocessing
 import fnmatch
 from pathlib import Path
+from update_command import remove_duplicate_copyright_comments
 
 def find_clang_format():
     """Find clang-format executable"""
@@ -150,7 +151,6 @@ def format_file(args):
 
 def main():
     # Configuration parameters
-    # When running from scripts directory, default to parent directory
     default_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..')) if len(sys.argv) <= 1 else sys.argv[1]
     root_dir = sys.argv[1] if len(sys.argv) > 1 else default_root
     suffixes = os.environ.get('SUFFIXES', '.h .cc .cpp .hpp .cxx .hxx .C').split()
@@ -182,11 +182,15 @@ def main():
         print("No files found that need formatting")
         return
     
+    # remove extra copyright comments
+    print("Removing duplicate copyright comments...")
+    for file_path in files:
+        remove_duplicate_copyright_comments(file_path)
+
     print(f"Found {len(files)} files, processing with {parallel_jobs} parallel jobs...")
     
     # Process in parallel
     with multiprocessing.Pool(parallel_jobs) as pool:
-        # Pass argument tuple (file_path, clang_format)
         results = pool.map(format_file, [(f, clang_format) for f in files])
         
         # Print results

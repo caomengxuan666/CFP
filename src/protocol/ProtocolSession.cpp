@@ -1,3 +1,29 @@
+/*
+ *  Copyright © 2025 [caomengxuan666]
+ *
+ *  Permission is hereby granted, free of charge, to any person obtaining a copy
+ *  of this software and associated documentation files (the “Software”), to
+ * deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ *  The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ *  THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ *
+ *  - File: ProtocolSession.cpp
+ *  - Username: Administrator
+ *  - CopyrightYear: 2025
+ */
+
 // Copyright (c) 2025 caomengxuan666
 #include "protocol/ProtocolSession.hpp"
 
@@ -10,9 +36,13 @@
 
 namespace protocol {
 
-ProtocolSession::ProtocolSession(std::unique_ptr<ICodec> codec,
-                                 std::unique_ptr<ITransportAdapter> transport)
-    : codec_(std::move(codec)), transport_(std::move(transport)) {}
+ProtocolSession::ProtocolSession(
+    std::unique_ptr<ICodec> codec,
+    std::unique_ptr<ITransportAdapter> config_transport,
+    std::unique_ptr<ITransportAdapter> report_transport)
+    : codec_(std::move(codec)),
+      config_transport_(std::move(config_transport)),
+      report_transport_(std::move(report_transport)) {}
 
 ProtocolSession::~ProtocolSession() {
   if (reconnect_timer_) {
@@ -23,76 +53,81 @@ ProtocolSession::~ProtocolSession() {
 void ProtocolSession::async_connect(
     const std::string& ip, uint16_t port,
     std::function<void(std::error_code)> callback) {
-  transport_->async_connect(ip, port, [this, callback](std::error_code ec) {
-    if (ec) {
-      std::cerr << "Connect failed: " << ec.message() << std::endl;
-    }
-    callback(ec);
-  });
+  config_transport_->async_connect(
+      ip, port, [this, callback](std::error_code ec) {
+        if (ec) {
+          std::cerr << "Connect failed: " << ec.message() << std::endl;
+        }
+        callback(ec);
+      });
 }
 
 void ProtocolSession::async_receive_config(ConfigCallback callback) {
-  transport_->async_receive([this, callback](std::error_code ec, auto data) {
-    if (ec) {
-      callback(nullptr);
-      return;
-    }
+  config_transport_->async_receive(
+      [this, callback](std::error_code ec, auto data) {
+        if (ec) {
+          callback(nullptr);
+          return;
+        }
 
-    auto config = codec_->decode_config(data);
-    if (config) {
-      callback(std::make_shared<ServerConfig>(*config));
-    } else {
-      callback(nullptr);
-    }
-  });
+        auto config = codec_->decode_config(data);
+        if (config) {
+          callback(std::make_shared<ServerConfig>(*config));
+        } else {
+          callback(nullptr);
+        }
+      });
 }
 
 void ProtocolSession::async_receive_features(FeaturesCallback callback) {
-  transport_->async_receive([this, callback](std::error_code ec, auto data) {
-    if (ec) {
-      callback(nullptr);
-      return;
-    }
+  report_transport_->async_receive(
+      [this, callback](std::error_code ec, auto data) {
+        if (ec) {
+          callback(nullptr);
+          return;
+        }
 
-    auto report = codec_->decode_features(data);
-    if (report) {
-      callback(std::make_shared<FeatureReport>(*report));
-    } else {
-      callback(nullptr);
-    }
-  });
+        auto report = codec_->decode_features(data);
+        if (report) {
+          callback(std::make_shared<FeatureReport>(*report));
+        } else {
+          callback(nullptr);
+        }
+      });
 }
 
 void ProtocolSession::async_receive_status(StatusCallback callback) {
-  transport_->async_receive([this, callback](std::error_code ec, auto data) {
-    if (ec) {
-      callback(nullptr);
-      return;
-    }
+  report_transport_->async_receive(
+      [this, callback](std::error_code ec, auto data) {
+        if (ec) {
+          callback(nullptr);
+          return;
+        }
 
-    auto status = codec_->decode_status(data);
-    if (status) {
-      callback(std::make_shared<FrontendStatus>(*status));
-    } else {
-      callback(nullptr);
-    }
-  });
+        auto status = codec_->decode_status(data);
+        if (status) {
+          callback(std::make_shared<FrontendStatus>(*status));
+        } else {
+          callback(nullptr);
+        }
+      });
 }
 
 void ProtocolSession::async_send_features(const FeatureReport& report,
                                           SendCallback callback) {
   auto data = codec_->encode_features(report);
-  transport_->async_send(data, callback);
+  report_transport_->async_send(data, callback);
 }
 
 void ProtocolSession::async_send_status(const FrontendStatus& status,
                                         SendCallback callback) {
   auto data = codec_->encode_status(status);
-  transport_->async_send(data, callback);
+  report_transport_->async_send(data, callback);
 }
 
 void ProtocolSession::start_reconnect_timer(uint16_t interval_sec) {
-  auto* tcp_transport = dynamic_cast<AsioTcpTransport*>(transport_.get());
+  auto* tcp_transport =
+      dynamic_cast<AsioTcpTransport*>(config_transport_.get());
   if (!tcp_transport || reconnect_timer_) {
     return;
   }
@@ -106,13 +141,16 @@ void ProtocolSession::start_reconnect_timer(uint16_t interval_sec) {
     uint16_t interval_sec;
 
     void operator()(std::error_code ec) {
-      if (ec) return;
+      if (ec) {
+        return;
+      }
 
       // 重连
       session->async_connect(
-          "192.1.53.9", 19700, [session = this->session](std::error_code ec) {
+          "192.1.53.9", 19700,
+          [session_raw_ptr = this->session](std::error_code ec) {
             if (!ec) {
-              session->async_receive_config(
+              session_raw_ptr->async_receive_config(
                   [](std::shared_ptr<protocol::ServerConfig> config) {
                     // 实际项目中应通过回调通知算法层
                     if (config) {

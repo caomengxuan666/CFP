@@ -20,8 +20,6 @@
  * IN THE SOFTWARE.
  *
  *  - File: ImageSignalBus.cpp
- *  - CreationYear: 2025
- *  - Date: Sat Dec 20 2025
  *  - Username: Administrator
  *  - CopyrightYear: 2025
  */
@@ -62,6 +60,44 @@ void ImageSignalBus::emit(const std::string& signal_name, const cv::Mat& img) {
     for (const auto& callback : it->second) {
       if (callback) {
         callback(img.clone());  // 深拷贝确保生命周期安全
+      }
+    }
+  }
+}
+
+void ImageSignalBus::subscribe_feature(const std::string& name,
+                                       FeatureCallback cb) {
+  std::unique_lock<std::shared_mutex> lock(mutex_);
+  feature_subscribers_[name].push_back(std::move(cb));
+}
+
+void ImageSignalBus::subscribe_status(const std::string& name,
+                                      StatusCallback cb) {
+  std::unique_lock<std::shared_mutex> lock(mutex_);
+  status_subscribers_[name].push_back(std::move(cb));
+}
+
+void ImageSignalBus::emit_feature(const std::string& name,
+                                  const FeatureData& data) {
+  std::shared_lock<std::shared_mutex> lock(mutex_);
+  if (auto it = feature_subscribers_.find(name);
+      it != feature_subscribers_.end()) {
+    for (const auto& cb : it->second) {
+      if (cb) {
+        cb(data);
+      }
+    }
+  }
+}
+
+void ImageSignalBus::emit_status(const std::string& name,
+                                 const StatusData& data) {
+  std::shared_lock<std::shared_mutex> lock(mutex_);
+  if (auto it = status_subscribers_.find(name);
+      it != status_subscribers_.end()) {
+    for (const auto& cb : it->second) {
+      if (cb) {
+        cb(data);
       }
     }
   }

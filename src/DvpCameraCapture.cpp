@@ -19,9 +19,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  *
- *  - File: DvpCapture.cpp
- *  - CreationYear: 2025
- *  - Date: Tue Dec 23 2025
+ *  - File: DvpCameraCapture.cpp
  *  - Username: Administrator
  *  - CopyrightYear: 2025
  */
@@ -72,6 +70,12 @@ bool DvpCameraCapture::start(const FrameProcessor& processor) {
     return false;
   }
 
+  protocol::FrontendStatus initial_status;
+  initial_status.self_check = true;  // TODO 暂时假设启动成功即自检通过
+  initial_status.capture = true;
+  initial_status.file_io = true;
+  update_status(initial_status);
+
   return true;
 }
 
@@ -96,6 +100,9 @@ void DvpCameraCapture::stop() {
     running_ = false;
     dvpStop(handle_);
   }
+  protocol::FrontendStatus status = get_status();
+  status.capture = false;
+  update_status(status);
 }
 
 void DvpCameraCapture::set_config(const DvpConfig& cfg) {
@@ -126,7 +133,12 @@ int DvpCameraCapture::OnFrameCallback([[maybe_unused]] dvpHandle handle,
                                       dvpStreamEvent event, void* context,
                                       dvpFrame* frame, void* buffer) {
   auto* capture = static_cast<DvpCameraCapture*>(context);
-  if (capture && capture->running_) {
+  // TODO 检查文件读写状态(示例：如果队列超过200帧了，则标记 file_io 错误)
+  [[unlikely]] if (capture->frame_queue_.size_approx() > 200) {
+    protocol::FrontendStatus status = capture->get_status();
+    status.file_io = false;
+    capture->update_status(status);
+  } else if (capture && capture->running_) {
     capture->process_frame(*frame, buffer);
   }
   return 0;
@@ -397,4 +409,15 @@ void DvpCameraCapture::set_config(const CameraConfig& cfg) {
 void DvpCameraCapture::set_roi(int x, int y, int width, int height) {
   dvpRegion roi{x, y, width, height, {}};
   dvpSetRoi(handle_, roi);
+}
+
+protocol::FrontendStatus DvpCameraCapture::get_status() const {
+  std::shared_lock lock(status_mutex_);
+  return current_status_;
+}
+
+void DvpCameraCapture::update_status(
+    const protocol::FrontendStatus& new_status) {
+  std::unique_lock lock(status_mutex_);
+  current_status_ = new_status;
 }

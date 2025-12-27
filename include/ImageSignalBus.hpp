@@ -20,8 +20,6 @@
  * IN THE SOFTWARE.
  *
  *  - File: ImageSignalBus.hpp
- *  - CreationYear: 2025
- *  - Date: Tue Dec 23 2025
  *  - Username: Administrator
  *  - CopyrightYear: 2025
  */
@@ -29,14 +27,33 @@
 // ImageSignalBus.hpp
 #pragma once
 #include <functional>
-#include <opencv2/core/mat.hpp>
 #include <shared_mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
+// cv
+#include <opencv2/core/mat.hpp>
+
 class ImageSignalBus {
  public:
   using ImageCallback = std::function<void(const cv::Mat&)>;
+
+  struct FeatureData {
+    std::string roll_id;
+    std::vector<std::pair<int, float>> features;
+    std::array<float, 20> special_images;
+  };
+
+  struct StatusData {
+    bool self_check = false;
+    bool capture = false;
+    bool file_io = false;
+    bool image_anomaly = false;
+  };
+
+  using FeatureCallback = std::function<void(const FeatureData&)>;
+  using StatusCallback = std::function<void(const StatusData&)>;
 
   // 单例
   static ImageSignalBus& instance() {
@@ -52,9 +69,21 @@ class ImageSignalBus {
 
   // 算法内部调用：广播图像（自动深拷贝）
   void emit(const std::string& signal_name, const cv::Mat& img);
+  // 与服务器之间通信：订阅特征和状态
+  void subscribe_feature(const std::string& name, FeatureCallback cb);
+  void subscribe_status(const std::string& name, StatusCallback cb);
+  void emit_feature(const std::string& name, const FeatureData& data);
+  void emit_status(const std::string& name, const StatusData& data);
 
  private:
   ImageSignalBus() = default;
+  // 图像信号
   std::unordered_map<std::string, std::vector<ImageCallback>> subscribers_;
+  // 数据信号
+  std::unordered_map<std::string, std::vector<FeatureCallback>>
+      feature_subscribers_;
+  std::unordered_map<std::string, std::vector<StatusCallback>>
+      status_subscribers_;
+
   mutable std::shared_mutex mutex_;
 };

@@ -1,9 +1,34 @@
+/*
+ *  Copyright © 2025 [caomengxuan666]
+ *
+ *  Permission is hereby granted, free of charge, to any person obtaining a copy
+ *  of this software and associated documentation files (the “Software”), to
+ * deal in the Software without restriction, including without limitation the
+ * rights to use, copy, modify, merge, publish, distribute, sublicense, and/or
+ * sell copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ *  The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ *  THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ *  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ *  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ *  AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ *  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+ * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+ * IN THE SOFTWARE.
+ *
+ *  - File: LegacyCodec.cpp
+ *  - Username: Administrator
+ *  - CopyrightYear: 2025
+ */
+
 // Copyright (c) 2025 caomengxuan666
 #include "protocol/LegacyCodec.hpp"
 
-#include <algorithm>
 #include <cstring>
-#include <iostream>
+#include <vector>
 
 namespace protocol {
 
@@ -156,6 +181,9 @@ void LegacyCodec::trim_trailing_spaces(std::string& s) {
 
 void LegacyCodec::parse_optional_fields(std::span<const uint8_t> data,
                                         size_t offset, ServerConfig& config) {
+  // ===== 字段: 来料类型 =====
+  // - 7000/19800: 总是发送
+  // - 常铝/紫金: 不发送（字段跳过）
   // 来料类型 (4字节)
   if (offset + 4 <= data.size()) {
     int32_t material;

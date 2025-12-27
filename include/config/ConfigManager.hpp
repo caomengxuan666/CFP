@@ -20,8 +20,6 @@
  * IN THE SOFTWARE.
  *
  *  - File: ConfigManager.hpp
- *  - CreationYear: 2025
- *  - Date: Tue Dec 23 2025
  *  - Username: Administrator
  *  - CopyrightYear: 2025
  */

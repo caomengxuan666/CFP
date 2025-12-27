@@ -20,8 +20,6 @@
  * IN THE SOFTWARE.
  *
  *  - File: executable_path.cpp
- *  - CreationYear: 2025
- *  - Date: Sat Dec 20 2025
  *  - Username: Administrator
  *  - CopyrightYear: 2025
  */

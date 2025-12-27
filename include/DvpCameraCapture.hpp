@@ -19,9 +19,7 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  *
- *  - File: DvpCapture.hpp
- *  - CreationYear: 2025
- *  - Date: Sat Dec 20 2025
+ *  - File: DvpCameraCapture.hpp
  *  - Username: Administrator
  *  - CopyrightYear: 2025
  */
@@ -37,6 +35,7 @@
 #include "DvpEventManager.hpp"
 #include "FrameProcessor.hpp"
 #include "concurrentqueue.h"
+#include "protocol/messages.hpp"
 
 class DvpCameraCapture : public CameraCapture {
  public:
@@ -48,6 +47,9 @@ class DvpCameraCapture : public CameraCapture {
   void stop() override;
   void set_config(const CameraConfig& cfg) override;
   void set_roi(int x, int y, int width, int height) override;
+
+  // 获取当前状态
+  protocol::FrontendStatus get_status() const;
 
   // 动态配置（线程安全）
   virtual void set_config(const DvpConfig& cfg);
@@ -79,11 +81,14 @@ class DvpCameraCapture : public CameraCapture {
                              dvpFrame*, void*);
   void process_frame(const dvpFrame& frame, const void* buffer);
   void update_camera_params();  // 应用配置到 SDK
+  void update_status(const protocol::FrontendStatus& new_status);
+  protocol::FrontendStatus current_status_;
 
   dvpHandle handle_ = 0;
   std::atomic<bool> running_{false};
   std::shared_ptr<DvpConfig> config_;
   mutable std::shared_mutex config_mutex_;
+  mutable std::shared_mutex status_mutex_;
   moodycamel::ConcurrentQueue<std::shared_ptr<CapturedFrame>> frame_queue_;
 
 // 结果队列

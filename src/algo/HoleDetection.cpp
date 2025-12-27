@@ -20,8 +20,6 @@
  * IN THE SOFTWARE.
  *
  *  - File: HoleDetection.cpp
- *  - CreationYear: 2025
- *  - Date: Sat Dec 20 2025
  *  - Username: Administrator
  *  - CopyrightYear: 2025
  */
@@ -76,7 +74,7 @@
 #include <filesystem>  //NOLINT
 #include <ios>
 #include <iostream>
-#include <ratio>
+#include <ratio>  //NOLINT
 #include <sstream>
 #include <string>
 #include <utility>
@@ -987,6 +985,28 @@ void HoleDetection::update_config(const Config& new_cfg) {
   parse_partition_params();  // 热更新时重新解析
 }
 
+// TODO(cmx) 在此处发送特征数据
+// 类似于这样
+/*
+  // 1. 执行算法
+  auto defects = detect_holes(frame);
+
+  // 2. 构建特征数据
+  ImageSignalBus::FeatureData data;
+  data.roll_id = "ROLL_001";
+  for (const auto& d : defects) {
+    data.features.emplace_back(d.type, d.confidence);
+  }
+  std::fill(data.special_images.begin(), data.special_images.end(), 0.0f);
+  data.image_data = frame.data;
+
+  // 3. 发送特征（非阻塞）
+  ImageSignalBus::instance().emit_feature("hole_features", data);
+
+  // 4. 同时可发送可视化图像
+  cv::Mat debug_img = // 生成调试图 ;
+  ImageSignalBus::instance().emit("hole_debug", debug_img);
+*/
 void HoleDetection::process(const CapturedFrame& frame) {
   if (frame.data.empty()) {
     cout << "Image is empty" << "with function" << __func__ << "in file"
