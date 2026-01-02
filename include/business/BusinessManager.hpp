@@ -40,8 +40,8 @@ namespace business {
 
 class BusinessManager {
  public:
-  BusinessManager(asio::io_context& io_ctx, const std::string& local_ip, 
-                  const std::string& main_server_ip = "192.1.53.9", 
+  BusinessManager(asio::io_context& io_ctx, const std::string& local_ip,
+                  const std::string& main_server_ip = "192.1.53.9",
                   const std::string& backup_server_ip = "");
   ~BusinessManager() = default;
 
@@ -71,7 +71,8 @@ class BusinessManager {
   }
 
   // 获取备份遥测会话
-  std::shared_ptr<protocol::ProtocolSession> get_backup_telemetry_session() const {
+  std::shared_ptr<protocol::ProtocolSession> get_backup_telemetry_session()
+      const {
     return backup_telemetry_session_;
   }
 
@@ -102,12 +103,15 @@ class BusinessManager {
   std::unique_ptr<redis::RedisClient> redis_;
 
   // 主协议会话
-  std::shared_ptr<protocol::ProtocolSession> report_session_;     // 19300 主服务器
-  std::shared_ptr<protocol::ProtocolSession> telemetry_session_;  // 19700 主服务器
+  std::shared_ptr<protocol::ProtocolSession> report_session_;  // 19300 主服务器
+  std::shared_ptr<protocol::ProtocolSession>
+      telemetry_session_;  // 19700 主服务器
 
   // 备份协议会话
-  std::shared_ptr<protocol::ProtocolSession> backup_report_session_;     // 19300 备份服务器
-  std::shared_ptr<protocol::ProtocolSession> backup_telemetry_session_;  // 19700 备份服务器
+  std::shared_ptr<protocol::ProtocolSession>
+      backup_report_session_;  // 19300 备份服务器
+  std::shared_ptr<protocol::ProtocolSession>
+      backup_telemetry_session_;  // 19700 备份服务器
 
   // 监听器
   std::unique_ptr<asio::ip::tcp::acceptor> acceptor_7000_;

@@ -30,7 +30,7 @@
 #include <string>
 #include <vector>
 
-#include "codec.hpp"
+#include "protocol/codec.hpp"
 
 namespace protocol {
 

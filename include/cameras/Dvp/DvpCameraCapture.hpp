@@ -49,7 +49,7 @@ class DvpCameraCapture : public CameraCapture {
   void set_roi(int x, int y, int width, int height) override;
 
   // 获取当前状态
-  protocol::FrontendStatus get_status() const;
+  protocol::FrontendStatus get_status() const override;
 
   // 动态配置（线程安全）
   virtual void set_config(const DvpConfig& cfg);

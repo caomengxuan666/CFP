@@ -145,9 +145,8 @@ class AlgoBase {
    */
   virtual void get_results() {}
 
- protected:
   /**
-   * @brief 发送处理结果
+   * @brief 给本地GUI发送处理结果
    * @param name 信号名称
    * @param img 处理结果图像
    */
@@ -158,6 +157,20 @@ class AlgoBase {
     }
   }
 
+  /**
+   * @brief 向服务器发送特征数据
+   * @param name 信号名称
+   * @param data 特征数据
+   */
+  void emit_feature(const std::string& name,
+                    const ImageSignalBus::FeatureData& data) {
+    assert(!declared_signals_.empty() && "AlgoBase::initialize() not called!");
+    if (declared_signals_.count(name)) {
+      ImageSignalBus::instance().emit_feature(name, data);
+    }
+  }
+
+ protected:
   // 配置映射表，将配置键映射到相应的处理函数
   std::unordered_map<std::string, std::function<void(const std::string&)>>
       configMap_;

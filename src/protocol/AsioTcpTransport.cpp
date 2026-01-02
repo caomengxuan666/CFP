@@ -27,13 +27,14 @@
 // Copyright (c) 2025 caomengxuan666
 #include "protocol/AsioTcpTransport.hpp"
 
-#include <string>
 #include <memory>
+#include <string>
 #include <vector>
 
 #include "asio.hpp"
 
 namespace protocol {
+
 
 AsioTcpTransport::AsioTcpTransport(asio::io_context& io_ctx)
     : io_ctx_(io_ctx), socket_(io_ctx) {}
@@ -75,74 +76,31 @@ void AsioTcpTransport::async_receive(ReceiveCallback callback) {
     return;
   }
 
-  // 接收开始信号 (1字节)
-  async_read_exact(1, [this, callback](const asio::error_code& ec, auto data) {
-    if (ec) {
-      callback(ec, {});
-      return;
-    }
+  if (state_ == ReceiveState::WaitingForStartSignal) {
+    // 第一次：接收开始信号 (1字节)
+    async_read_exact(1,
+                     [this, callback](const asio::error_code& ec, auto data) {
+                       if (ec) {
+                         callback(ec, {});
+                         return;
+                       }
 
-    char start_signal = data[0];
-    if (start_signal == 'F') {
-      // 接收特征数据
-      async_read_exact(72 + 4, [this, callback](const asio::error_code& ec,
-                                                auto header) {
-        if (ec) {
-          callback(ec, {});
-          return;
-        }
-
-        // 解析特征个数
-        int32_t num_features;
-        std::memcpy(&num_features, header.data() + 72, 4);
-
-        // 接收剩余数据
-        size_t remaining = 20 * 4 + num_features * 8 + 4;
-        async_read_exact(remaining, [this, callback, num_features](
-                                        const asio::error_code& ec, auto body) {
-          if (ec) {
-            callback(ec, {});
-            return;
-          }
-
-          // 读取图片长度
-          int32_t img_len;
-          std::memcpy(&img_len, body.data() + 20 * 4 + num_features * 8, 4);
-
-          // 读取图片数据
-          async_read_exact(img_len, [callback, body](const asio::error_code& ec,
-                                                     auto img_data) {
-            if (ec) {
-              callback(ec, {});
-              return;
-            }
-            // 组合完整数据
-            std::vector<uint8_t> full_data(1 + 72 + 4 + body.size() +
-                                           img_data.size());
-            full_data[0] = 'F';
-            // 这里简化处理，实际应拼接所有数据
-            callback({}, full_data);
-          });
-        });
-      });
-    } else if (start_signal == 'T') {
-      // 接收状态数据 (4字节)
-      async_read_exact(
-          4, [callback](const asio::error_code& ec, auto status_data) {
-            if (ec) {
-              callback(ec, {});
-              return;
-            }
-            std::vector<uint8_t> full_data(5);
-            full_data[0] = 'T';
-            std::memcpy(full_data.data() + 1, status_data.data(), 4);
-            callback({}, full_data);
-          });
-    } else {
-      // 未知信号
-      callback(asio::error::invalid_argument, {});
-    }
-  });
+                       char start_signal = data[0];
+                       if (start_signal == 'F') {
+                         state_ = ReceiveState::ReceivingFeatureData;
+                         receive_feature_data(callback);
+                       } else if (start_signal == 'T') {
+                         state_ = ReceiveState::ReceivingStatusData;
+                         receive_status_data(callback);
+                       } else {
+                         callback(asio::error::invalid_argument, {});
+                       }
+                     });
+  } else if (state_ == ReceiveState::ReceivingFeatureData) {
+    receive_feature_data(callback);
+  } else if (state_ == ReceiveState::ReceivingStatusData) {
+    receive_status_data(callback);
+  }
 }
 
 void AsioTcpTransport::close() {
@@ -174,6 +132,57 @@ void AsioTcpTransport::async_read_exact(
           handler(ec, std::span<const uint8_t>(buffer->data(), buffer->size()));
         }
       });
+}
+
+void AsioTcpTransport::receive_feature_data(ReceiveCallback callback) {
+  async_read_exact(
+      72 + 4, [this, callback](const asio::error_code& ec, auto header) {
+        if (ec) {
+          callback(ec, {});
+          return;
+        }
+
+        int32_t num_features;
+        std::memcpy(&num_features, header.data() + 72, 4);
+
+        size_t remaining = 20 * 4 + num_features * 8 + 4;
+        async_read_exact(remaining, [this, callback, num_features](
+                                        const asio::error_code& ec, auto body) {
+          if (ec) {
+            callback(ec, {});
+            return;
+          }
+
+          int32_t img_len;
+          std::memcpy(&img_len, body.data() + 20 * 4 + num_features * 8, 4);
+
+          async_read_exact(img_len, [callback, body](const asio::error_code& ec,
+                                                     auto img_data) {
+            if (ec) {
+              callback(ec, {});
+              return;
+            }
+            std::vector<uint8_t> full_data(1 + 72 + 4 + body.size() +
+                                           img_data.size());
+            full_data[0] = 'F';
+            // 实际应该拼接所有数据
+            callback({}, full_data);
+          });
+        });
+      });
+}
+
+void AsioTcpTransport::receive_status_data(ReceiveCallback callback) {
+  async_read_exact(4, [callback](const asio::error_code& ec, auto status_data) {
+    if (ec) {
+      callback(ec, {});
+      return;
+    }
+    std::vector<uint8_t> full_data(5);
+    full_data[0] = 'T';
+    std::memcpy(full_data.data() + 1, status_data.data(), 4);
+    callback({}, full_data);
+  });
 }
 
 }  // namespace protocol

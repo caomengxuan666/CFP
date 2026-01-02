@@ -44,6 +44,13 @@ set(OpenCV_OPENCL OFF CACHE BOOL "Disable OpenCV OpenCL detection" FORCE)
 # asio
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/third_party/asio/include)
 
+# 如果是windows平台
+if (WIN32)
+    # 使用 Windows 10 SDK
+    add_compile_definitions(_WIN32_WINNT=0x0A00)
+endif()
+
+
 set(QT_DIR $ENV{QT_DIR})
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/find_Qt_Dependency.cmake) # 确保模块路径正确
 

@@ -43,7 +43,9 @@ BusinessManager::BusinessManager(asio::io_context& io_ctx,
                                  const std::string& local_ip,
                                  const std::string& main_server_ip,
                                  const std::string& backup_server_ip)
-    : io_ctx_(io_ctx), main_server_ip_(main_server_ip), backup_server_ip_(backup_server_ip) {
+    : io_ctx_(io_ctx),
+      main_server_ip_(main_server_ip),
+      backup_server_ip_(backup_server_ip) {
   size_t last_dot = local_ip.find_last_of('.');
   machine_id_ = (last_dot != std::string::npos) ? local_ip.substr(last_dot + 1)
                                                 : "unknown";
@@ -71,27 +73,33 @@ void BusinessManager::start_master() {
   auto report_transport = std::make_unique<protocol::AsioTcpTransport>(io_ctx_);
   report_session_ = std::make_shared<protocol::ProtocolSession>(
       std::move(report_codec), nullptr, std::move(report_transport));
-  report_session_->async_connect(main_server_ip_, 19300, [](std::error_code ec) {
-    if (ec) {
-      std::cerr << "Main server 19300 connect failed: " << ec.message() << "\n";
-    } else {
-      std::cout << "Main server 19300 connected successfully\n";
-    }
-  });
+  report_session_->async_connect(
+      main_server_ip_, 19300, [](std::error_code ec) {
+        if (ec) {
+          std::cerr << "Main server 19300 connect failed: " << ec.message()
+                    << "\n";
+        } else {
+          std::cout << "Main server 19300 connected successfully\n";
+        }
+      });
 
   // 3. 创建备份服务器 19300 上报会话（如果配置了备份服务器IP）
   if (!backup_server_ip_.empty()) {
     auto backup_report_codec = std::make_unique<protocol::LegacyCodec>();
-    auto backup_report_transport = std::make_unique<protocol::AsioTcpTransport>(io_ctx_);
+    auto backup_report_transport =
+        std::make_unique<protocol::AsioTcpTransport>(io_ctx_);
     backup_report_session_ = std::make_shared<protocol::ProtocolSession>(
-        std::move(backup_report_codec), nullptr, std::move(backup_report_transport));
-    backup_report_session_->async_connect(backup_server_ip_, 19300, [](std::error_code ec) {
-      if (ec) {
-        std::cerr << "Backup server 19300 connect failed: " << ec.message() << "\n";
-      } else {
-        std::cout << "Backup server 19300 connected successfully\n";
-      }
-    });
+        std::move(backup_report_codec), nullptr,
+        std::move(backup_report_transport));
+    backup_report_session_->async_connect(
+        backup_server_ip_, 19300, [](std::error_code ec) {
+          if (ec) {
+            std::cerr << "Backup server 19300 connect failed: " << ec.message()
+                      << "\n";
+          } else {
+            std::cout << "Backup server 19300 connected successfully\n";
+          }
+        });
   }
 
   // 4. 创建主服务器 19700 遥测会话
@@ -103,7 +111,8 @@ void BusinessManager::start_master() {
   telemetry_session_->async_connect(
       main_server_ip_, 19700, [](std::error_code ec) {
         if (ec) {
-          std::cerr << "Main server 19700 connect failed: " << ec.message() << "\n";
+          std::cerr << "Main server 19700 connect failed: " << ec.message()
+                    << "\n";
         } else {
           std::cout << "Main server 19700 connected successfully\n";
         }
@@ -115,11 +124,13 @@ void BusinessManager::start_master() {
     auto backup_telemetry_transport =
         std::make_unique<protocol::AsioTcpTransport>(io_ctx_);
     backup_telemetry_session_ = std::make_shared<protocol::ProtocolSession>(
-        std::move(backup_telemetry_codec), std::move(backup_telemetry_transport), nullptr);
+        std::move(backup_telemetry_codec),
+        std::move(backup_telemetry_transport), nullptr);
     backup_telemetry_session_->async_connect(
         backup_server_ip_, 19700, [](std::error_code ec) {
           if (ec) {
-            std::cerr << "Backup server 19700 connect failed: " << ec.message() << "\n";
+            std::cerr << "Backup server 19700 connect failed: " << ec.message()
+                      << "\n";
           } else {
             std::cout << "Backup server 19700 connected successfully\n";
           }
@@ -148,27 +159,33 @@ void BusinessManager::start_worker() {
   auto report_transport = std::make_unique<protocol::AsioTcpTransport>(io_ctx_);
   report_session_ = std::make_shared<protocol::ProtocolSession>(
       std::move(report_codec), nullptr, std::move(report_transport));
-  report_session_->async_connect(main_server_ip_, 19300, [](std::error_code ec) {
-    if (ec) {
-      std::cerr << "Main server 19300 connect failed: " << ec.message() << "\n";
-    } else {
-      std::cout << "Main server 19300 connected successfully\n";
-    }
-  });
+  report_session_->async_connect(
+      main_server_ip_, 19300, [](std::error_code ec) {
+        if (ec) {
+          std::cerr << "Main server 19300 connect failed: " << ec.message()
+                    << "\n";
+        } else {
+          std::cout << "Main server 19300 connected successfully\n";
+        }
+      });
 
   // 3. 创建备份服务器 19300 上报会话（如果配置了备份服务器IP）
   if (!backup_server_ip_.empty()) {
     auto backup_report_codec = std::make_unique<protocol::LegacyCodec>();
-    auto backup_report_transport = std::make_unique<protocol::AsioTcpTransport>(io_ctx_);
+    auto backup_report_transport =
+        std::make_unique<protocol::AsioTcpTransport>(io_ctx_);
     backup_report_session_ = std::make_shared<protocol::ProtocolSession>(
-        std::move(backup_report_codec), nullptr, std::move(backup_report_transport));
-    backup_report_session_->async_connect(backup_server_ip_, 19300, [](std::error_code ec) {
-      if (ec) {
-        std::cerr << "Backup server 19300 connect failed: " << ec.message() << "\n";
-      } else {
-        std::cout << "Backup server 19300 connected successfully\n";
-      }
-    });
+        std::move(backup_report_codec), nullptr,
+        std::move(backup_report_transport));
+    backup_report_session_->async_connect(
+        backup_server_ip_, 19300, [](std::error_code ec) {
+          if (ec) {
+            std::cerr << "Backup server 19300 connect failed: " << ec.message()
+                      << "\n";
+          } else {
+            std::cout << "Backup server 19300 connected successfully\n";
+          }
+        });
   }
 }
 
@@ -373,17 +390,20 @@ void BusinessManager::send_aggregated_telemetry() {
   // 发送到主服务器 19700
   telemetry_session_->async_send_telemetry(telemetry, [](std::error_code ec) {
     if (ec) {
-      std::cerr << "Main server 19700 telemetry send failed: " << ec.message() << "\n";
+      std::cerr << "Main server 19700 telemetry send failed: " << ec.message()
+                << "\n";
     }
   });
 
   // 发送到备份服务器 19700（如果存在）
   if (backup_telemetry_session_) {
-    backup_telemetry_session_->async_send_telemetry(telemetry, [](std::error_code ec) {
-      if (ec) {
-        std::cerr << "Backup server 19700 telemetry send failed: " << ec.message() << "\n";
-      }
-    });
+    backup_telemetry_session_->async_send_telemetry(
+        telemetry, [](std::error_code ec) {
+          if (ec) {
+            std::cerr << "Backup server 19700 telemetry send failed: "
+                      << ec.message() << "\n";
+          }
+        });
   }
 }
 

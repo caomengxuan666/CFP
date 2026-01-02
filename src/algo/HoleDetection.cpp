@@ -57,7 +57,8 @@
  *    d. Hole merging:
  *       - merge_holes() -> merge_close_holes()
  *         * Combine nearby holes based on distance threshold
- *    e. Visualization and output:
+ *    e. Feature emission and visualization:
+ *       - emit_feature() - Emit feature data to signal bus for downstream processing
  *       - For file processing: create_visualizations() and save_results()
  *       - For video frames: Just output statistics
  */
@@ -820,10 +821,12 @@ static void save_results(const Mat& result_image,
 }
 
 // load from local directory for debug
-static void process_single_image_impl(
-    const Mat& processed_image, const std::string& image_path,
-    const std::string& output_dir, const HoleDetection::Config& config,
-    const PartitionConfig& parsed_params) noexcept {
+static void process_single_image_impl(const Mat& processed_image,
+                                      const std::string& image_path,
+                                      const std::string& output_dir,
+                                      const HoleDetection::Config& config,
+                                      const PartitionConfig& parsed_params,
+                                      AlgoBase* algo_ptr) noexcept {
   HOLE_DETECTION_TIMING_START(total);
 
   // --- Preprocessing ---
@@ -842,6 +845,35 @@ static void process_single_image_impl(
 
   // --- Merge holes ---
   auto merged_hole_data = merge_holes(hole_data, is_small_image, config);
+
+  // 构造特征数据
+  ImageSignalBus::FeatureData data;
+  // data.roll_id =
+  // "HOLE_" + std::to_string(frame.timestamp);
+  // 这里不需要直接写卷号而是在外部设置，外部可以获取服务器发送的卷号状态
+  // 这个是传输层的事情，所以我们算法层不需要关心这个
+
+  for (const auto& hole : merged_hole_data) {
+    float confidence =
+        static_cast<float>(hole.area) / (image.rows * image.cols);  // NOLINT
+    data.features.emplace_back(1, confidence);
+  }
+
+  std::fill(data.special_images.begin(), data.special_images.end(), 0.0f);
+  for (size_t i = 0; i < std::min(merged_hole_data.size(), size_t(10));
+       ++i) {  // NOLINT
+    if (i * 2 + 1 < data.special_images.size()) {
+      data.special_images[i * 2] =
+          static_cast<float>(merged_hole_data[i].real_width);
+      data.special_images[i * 2 + 1] =
+          static_cast<float>(merged_hole_data[i].real_height);
+    }
+  }
+
+  // 直接调用 emit_feature
+  if (algo_ptr) {
+    algo_ptr->emit_feature("hole_features", data);
+  }
 
   // 如果是视频帧处理，则不需要保存结果图像
   if (!image_path.empty() && !output_dir.empty()) {
@@ -875,11 +907,11 @@ static void process_single_image_impl(
 }
 
 // 从文件路径加载图像并处理的接口
-static void process_single_image(
-    const std::string& image_path, const std::string& output_dir,
-    const HoleDetection::Config& config,
-    const PartitionConfig& parsed_params) noexcept {
-  // --- Load image ---
+static void process_single_image(const std::string& image_path,
+                                 const std::string& output_dir,
+                                 const HoleDetection::Config& config,
+                                 const PartitionConfig& parsed_params,
+                                 AlgoBase* algo_ptr) noexcept {
   HOLE_DETECTION_TIMING_START(load);
   Mat image = imread(image_path, IMREAD_GRAYSCALE);
   HOLE_DETECTION_TIMING_END(load, "  Loading image:    ");
@@ -889,32 +921,31 @@ static void process_single_image(
     return;
   }
 
-  // 调用公共实现函数
   process_single_image_impl(image, image_path, output_dir, config,
-                            parsed_params);
+                            parsed_params, algo_ptr);
 }
 
 // 从Mat对象处理图像的接口（用于视频帧处理）
-static void process_single_image(
-    const Mat& frame, const HoleDetection::Config& config,
-    const PartitionConfig& parsed_params) noexcept {
-  // 对于视频帧，我们不需要文件路径和输出目录
+static void process_single_image(const Mat& frame,
+                                 const HoleDetection::Config& config,
+                                 const PartitionConfig& parsed_params,
+                                 AlgoBase* algo_ptr) noexcept {
   std::string dummy_path = "";
   std::string dummy_output_dir = "";
   process_single_image_impl(frame, dummy_path, dummy_output_dir, config,
-                            parsed_params);
+                            parsed_params, algo_ptr);
 }
 
 // 新增：从CapturedFrame处理图像的接口，这是process()函数实际调用的版本
-static void process_single_image(
-    const CapturedFrame& frame, const HoleDetection::Config& config,
-    const PartitionConfig& parsed_params) noexcept {
-  // 转换为Mat并调用通用实现
+static void process_single_image(const CapturedFrame& frame,
+                                 const HoleDetection::Config& config,
+                                 const PartitionConfig& parsed_params,
+                                 AlgoBase* algo_ptr) noexcept {
   std::string dummy_path = "";
   std::string dummy_output_dir = "";
   Mat image = CapturedFrame2Mat(frame);
   process_single_image_impl(image, dummy_path, dummy_output_dir, config,
-                            parsed_params);
+                            parsed_params, algo_ptr);
 }
 
 void HoleDetection::parse_partition_params() {
@@ -985,28 +1016,6 @@ void HoleDetection::update_config(const Config& new_cfg) {
   parse_partition_params();  // 热更新时重新解析
 }
 
-// TODO(cmx) 在此处发送特征数据
-// 类似于这样
-/*
-  // 1. 执行算法
-  auto defects = detect_holes(frame);
-
-  // 2. 构建特征数据
-  ImageSignalBus::FeatureData data;
-  data.roll_id = "ROLL_001";
-  for (const auto& d : defects) {
-    data.features.emplace_back(d.type, d.confidence);
-  }
-  std::fill(data.special_images.begin(), data.special_images.end(), 0.0f);
-  data.image_data = frame.data;
-
-  // 3. 发送特征（非阻塞）
-  ImageSignalBus::instance().emit_feature("hole_features", data);
-
-  // 4. 同时可发送可视化图像
-  cv::Mat debug_img = // 生成调试图 ;
-  ImageSignalBus::instance().emit("hole_debug", debug_img);
-*/
 void HoleDetection::process(const CapturedFrame& frame) {
   if (frame.data.empty()) {
     cout << "Image is empty" << "with function" << __func__ << "in file"
@@ -1035,7 +1044,7 @@ void HoleDetection::process(const CapturedFrame& frame) {
   HOLE_DETECTION_TIMING_START(total);
   // 直接处理CapturedFrame，不再需要保存结果到文件
   process_single_image(CapturedFrame2Mat(frame), local_config,
-                       local_parsed_params);
+                       local_parsed_params,this);
 
   HOLE_DETECTION_TIMING_END(total, "Total time: ");
 }

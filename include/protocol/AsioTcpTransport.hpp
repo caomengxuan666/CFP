@@ -28,13 +28,20 @@
 #pragma once
 #include <string>
 
-#include "TransportAdapter.hpp"
 #include "asio/io_context.hpp"
 #include "asio/ip/tcp.hpp"
 #include "asio/streambuf.hpp"
+#include "protocol/TransportAdapter.hpp"
+
 namespace protocol {
 
 class AsioTcpTransport : public ITransportAdapter {
+  enum class ReceiveState {
+    WaitingForStartSignal,  // 等待开始信号
+    ReceivingFeatureData,   // 接收特征数据
+    ReceivingStatusData     // 接收状态数据
+  };
+
  public:
   explicit AsioTcpTransport(asio::io_context& io_ctx);
   ~AsioTcpTransport() override;
@@ -48,10 +55,13 @@ class AsioTcpTransport : public ITransportAdapter {
   asio::io_context& get_io_context() { return io_ctx_; }
 
  private:
+  void receive_status_data(ReceiveCallback callback);
+  void receive_feature_data(ReceiveCallback callback);
   asio::io_context& io_ctx_;
   asio::ip::tcp::socket socket_;
   asio::streambuf read_buffer_;
   bool is_connected_ = false;
+  ReceiveState state_ = ReceiveState::WaitingForStartSignal;
 
   void async_read_exact(
       size_t size,

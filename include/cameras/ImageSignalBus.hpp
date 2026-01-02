@@ -26,11 +26,14 @@
 
 // ImageSignalBus.hpp
 #pragma once
+#include <array>
 #include <functional>
+#include <memory>
 #include <shared_mutex>
 #include <string>
 #include <unordered_map>
 #include <vector>
+
 
 // cv
 #include <opencv2/core/mat.hpp>
@@ -43,6 +46,7 @@ class ImageSignalBus {
     std::string roll_id;
     std::vector<std::pair<int, float>> features;
     std::array<float, 20> special_images;
+    std::string camera_id;
   };
 
   struct StatusData {
@@ -56,10 +60,15 @@ class ImageSignalBus {
   using StatusCallback = std::function<void(const StatusData&)>;
 
   // 单例
-  static ImageSignalBus& instance() {
-    static ImageSignalBus bus;
-    return bus;
-  }
+  /**
+   * @brief 获取ImageSignalBus实例
+   * 
+   * @param ns 命名空间,默认为default
+   * @note 当我们后续使用一台电脑控制多个相机实例的时候，可以更轻松区分信号的命名空间
+   * @return ImageSignalBus& 
+   */
+  
+  static ImageSignalBus& instance(const std::string& ns = "default");
 
   // 算法调用：声明自己能提供哪些信号
   void declare_signal(const std::string& signal_name);
@@ -69,6 +78,7 @@ class ImageSignalBus {
 
   // 算法内部调用：广播图像（自动深拷贝）
   void emit(const std::string& signal_name, const cv::Mat& img);
+
   // 与服务器之间通信：订阅特征和状态
   void subscribe_feature(const std::string& name, FeatureCallback cb);
   void subscribe_status(const std::string& name, StatusCallback cb);
@@ -77,6 +87,9 @@ class ImageSignalBus {
 
  private:
   ImageSignalBus() = default;
+  ImageSignalBus(const ImageSignalBus&) = delete;
+  ImageSignalBus& operator=(const ImageSignalBus&) = delete;
+
   // 图像信号
   std::unordered_map<std::string, std::vector<ImageCallback>> subscribers_;
   // 数据信号
@@ -86,4 +99,9 @@ class ImageSignalBus {
       status_subscribers_;
 
   mutable std::shared_mutex mutex_;
+
+  // 改成存储 unique_ptr
+  static std::unordered_map<std::string, std::unique_ptr<ImageSignalBus>>
+      instances_;
+  static std::shared_mutex instances_mutex_;
 };

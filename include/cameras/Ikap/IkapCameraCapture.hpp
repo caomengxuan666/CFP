@@ -54,7 +54,7 @@ class IkapCameraCapture : public CameraCapture {
 
   void register_event_handler(IkapEventType type, IkapEventHandler handler);
   void add_frame_processor(const FrameProcessor& processor);  // 新增，和DVP一致
-  protocol::FrontendStatus get_status() const;
+  protocol::FrontendStatus get_status() const override;
 
   IkapEventManager* get_event_manager() const { return event_manager_.get(); }
   moodycamel::ConcurrentQueue<std::shared_ptr<CapturedFrame>>& get_frame_queue()

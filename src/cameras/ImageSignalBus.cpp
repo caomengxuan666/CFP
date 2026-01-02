@@ -24,19 +24,33 @@
  *  - CopyrightYear: 2025-2026
  */
 
-// ImageSignalBus.cpp
-#include "cameras/ImageSignalBus.hpp"  //NOLINT
+#include "cameras/ImageSignalBus.hpp"
 
+#include <memory>
+#include <shared_mutex>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
-// For mat
-#include <opencv2/core/mat.hpp>
+std::unordered_map<std::string, std::unique_ptr<ImageSignalBus>>
+    ImageSignalBus::instances_;
+std::shared_mutex ImageSignalBus::instances_mutex_;
+
+ImageSignalBus& ImageSignalBus::instance(const std::string& ns) {
+  std::unique_lock<std::shared_mutex> lock(instances_mutex_);
+  auto it = instances_.find(ns);
+  if (it == instances_.end()) {
+    // 手动创建，不会调用默认构造函数
+    it = instances_
+             .emplace(ns, std::unique_ptr<ImageSignalBus>(new ImageSignalBus()))
+             .first;
+  }
+  return *it->second;
+}
 
 void ImageSignalBus::declare_signal(const std::string& signal_name) {
   std::unique_lock<std::shared_mutex> lock(mutex_);
-  // 声明信号（即使没有订阅者也要记录，便于 UI 发现）
   if (subscribers_.find(signal_name) == subscribers_.end()) {
     subscribers_[signal_name] = std::vector<ImageCallback>();
   }
@@ -56,10 +70,9 @@ void ImageSignalBus::emit(const std::string& signal_name, const cv::Mat& img) {
   std::shared_lock<std::shared_mutex> lock(mutex_);
   auto it = subscribers_.find(signal_name);
   if (it != subscribers_.end()) {
-    // 对每个订阅者发送**深拷贝**的图像
     for (const auto& callback : it->second) {
       if (callback) {
-        callback(img.clone());  // 深拷贝确保生命周期安全
+        callback(img.clone());
       }
     }
   }

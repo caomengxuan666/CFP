@@ -154,10 +154,13 @@ struct HoleDetectionConfig {
   }
 };
 
+struct SurfaceDetectionConfig {
+  // todo: 添加表面检测参数
+};
 struct GlobalConfig {
   std::string title;
   HoleDetectionConfig hole_detection;
-
+  SurfaceDetectionConfig surface_detection;
   static GlobalConfig load();
 
   static void saveDefaults(inicpp::IniManager &ini) {
@@ -211,9 +214,8 @@ inline GlobalConfig GlobalConfig::load() {
     inicpp::IniManager ini(get_default_config_path());
 
     GlobalConfig config;
-    config.title = ini[""]["title"].String().empty()
-                       ? "CFP"
-                       : ini[""]["title"].String();
+    config.title =
+        ini[""]["title"].String().empty() ? "CFP" : ini[""]["title"].String();
     config.hole_detection = HoleDetectionConfig::load(ini);
     return config;
   } catch (std::exception &e) {

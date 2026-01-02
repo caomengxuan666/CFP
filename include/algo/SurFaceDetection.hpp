@@ -19,30 +19,47 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  *
- *  - File: CameraCapture.hpp
+ *  - File: SurFaceDetection.hpp
  *  - Username: Administrator
  *  - CopyrightYear: 2025-2026
  */
 
 #pragma once
 
-#include <memory>
+#include <shared_mutex>
+#include <vector>
 
-#include "concurrentqueue.h"
-#include "protocol/messages.hpp"
-class FrameProcessor;
-struct CameraConfig;  // 声明CameraConfig结构
-class CapturedFrame;
+#include "algo/AlgoBase.hpp"
+#include "algo/AlgorithmConfigTraits.hpp"
+#include "config/AlogoParams.hpp"
+#include "config/ConfigObserver.hpp"
 
-class CameraCapture {
- public:
-  virtual ~CameraCapture() = default;
-  virtual bool start() = 0;
-  virtual bool start(const FrameProcessor&) = 0;
-  virtual void stop() = 0;
-  virtual void set_config(const CameraConfig&) = 0;
-  virtual void set_roi(int x, int y, int width, int height) = 0;
-  virtual moodycamel::ConcurrentQueue<std::shared_ptr<CapturedFrame>>&
-  get_frame_queue() = 0;
-  virtual protocol::FrontendStatus get_status() const= 0;
+namespace algo {
+
+template <>
+struct AlgorithmConfigExtractor<config::SurfaceDetectionConfig> {
+  static const config::SurfaceDetectionConfig& extract(
+      const config::GlobalConfig& global_cfg) {
+    return global_cfg.surface_detection;
+  }
 };
+
+class SurfaceDetection : public AlgoBase {
+ public:
+  ALGO_METADATA("SurfaceDetection", "表面检测")
+  using Config = config::SurfaceDetectionConfig;
+  SurfaceDetection();
+  explicit SurfaceDetection(const Config& cfg);
+  void process(const CapturedFrame& frame) override;
+
+  std::vector<AlgoParamInfo> get_parameter_info() const override;
+  std::vector<AlgoSignalInfo> get_signal_info() const override;
+
+  void update_config(const Config& new_cfg);
+
+ private:
+  Config config_;
+  mutable std::shared_mutex config_mutex_;
+};
+
+}  // namespace algo

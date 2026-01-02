@@ -68,4 +68,5 @@ if(SAVE_RESULT_IMG)
 endif()
 
 add_subdirectory(utils)
+# client暂时不着急制作，需要统一多相机接口之后再慢慢看怎么开发
 #add_subdirectory(client)

@@ -29,9 +29,9 @@
 #include <memory>
 #include <string>
 
-#include "TransportAdapter.hpp"
-#include "codec.hpp"
-#include "messages.hpp"
+#include "protocol/TransportAdapter.hpp"
+#include "protocol/codec.hpp"
+#include "protocol/messages.hpp"
 
 namespace protocol {
 

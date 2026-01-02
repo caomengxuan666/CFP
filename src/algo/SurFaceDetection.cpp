@@ -19,30 +19,32 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  *
- *  - File: CameraCapture.hpp
+ *  - File: SurFaceDetection.cpp
  *  - Username: Administrator
  *  - CopyrightYear: 2025-2026
  */
+#include "algo/SurFaceDetection.hpp"
 
-#pragma once
+#include <vector>
 
-#include <memory>
+// TODO 未来我们需要实现完整的表面检测算法
 
-#include "concurrentqueue.h"
-#include "protocol/messages.hpp"
-class FrameProcessor;
-struct CameraConfig;  // 声明CameraConfig结构
-class CapturedFrame;
+namespace algo {
 
-class CameraCapture {
- public:
-  virtual ~CameraCapture() = default;
-  virtual bool start() = 0;
-  virtual bool start(const FrameProcessor&) = 0;
-  virtual void stop() = 0;
-  virtual void set_config(const CameraConfig&) = 0;
-  virtual void set_roi(int x, int y, int width, int height) = 0;
-  virtual moodycamel::ConcurrentQueue<std::shared_ptr<CapturedFrame>>&
-  get_frame_queue() = 0;
-  virtual protocol::FrontendStatus get_status() const= 0;
-};
+std::vector<AlgoParamInfo> SurfaceDetection::get_parameter_info() const {
+  return {};
+}
+
+std::vector<AlgoSignalInfo> SurfaceDetection::get_signal_info() const {
+  return {};
+}
+
+void SurfaceDetection::update_config(const Config& new_cfg) {}
+
+SurfaceDetection::SurfaceDetection() {}
+
+SurfaceDetection::SurfaceDetection(const Config& cfg) {}
+
+void SurfaceDetection::process(const CapturedFrame& frame) {}
+
+}  // namespace algo

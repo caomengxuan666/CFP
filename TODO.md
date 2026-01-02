@@ -17,10 +17,10 @@
 
 ## Redis 通信架构
 
-- [ ] 实现 Redis 客户端连接管理（IRedisClient 接口）
-- [ ] 完成 Redis PUB/SUB 通信机制
+- [x] 实现 Redis 客户端连接管理（IRedisClient 接口）
+- [x] 完成 Redis PUB/SUB 通信机制
 - [ ] 设计并实现分布式状态同步协议
-- [ ] 集成 Redis 与 TCP 通信的协调机制
+- [x] 集成 Redis 与 TCP 通信的协调机制
 - [ ] 实现故障恢复与重连机制
 
 ## 动态算法库
@@ -76,16 +76,18 @@
 
 - [ ] **[include/cameras/FrameProcessor.hpp]** - 第42行："TODO 未来需要用union来存储来自不同相机的元信息"，需要改进CapturedFrame结构以支持不同相机的元信息
 
-- [ ] **[src/FrameProcessor.hpp]** - 第137行："TODO: 实现图像拼接、去重、对齐"，在MultiCameraFusionProcessor中实现图像融合功能。目前来说的话暂时不用设计融合策略，直接使用单相机。未来即使使用
+- [ ] **[src/cameras/FrameProcessor.hpp]** - 第137行："TODO: 实现图像拼接、去重、对齐"，在MultiCameraFusionProcessor中实现图像融合功能。目前来说的话暂时不用设计融合策略，直接使用单相机。未来即使使用
 融合策略，我们也是通过设置ROI的方式来达成这个目的。
 
-- [ ] **[src/example.cpp]** - 第296行："TODO(cmx): 根据需求的变化，前端机只负责采集一个相机图像并且处理"，需要根据需求调整前端机的相机处理逻辑
+- [ ] **[examples/basic_example.cpp]** - 第296行："TODO(cmx): 根据需求的变化，前端机只负责采集一个相机图像并且处理"，需要根据需求调整前端机的相机处理逻辑
 
-- [ ] **[src/example.cpp]** - 第284行："TODO: 实现拼接、去重、对齐"，在融合策略中实现图像处理功能
+- [ ] **[examples/basic_example.cpp]** - 第284行："TODO: 实现拼接、去重、对齐"，在融合策略中实现图像处理功能
 
 ### 3. 算法实现相关
 
-- [ ] **[src/algos/HoleDetection.cpp]** - 第989行："TODO(cmx) 在此处发送特征数据"，需要实现特征数据的发送功能
+- [x] **[src/algos/HoleDetection.cpp]** - 第989行："TODO(cmx) 在此处发送特征数据"，需要实现特征数据的发送功能
+
+- [ ] **[src/algos/HoleDetection.cpp]** - 第850行："TODO 需要从服务器获取卷号并且直接拼接"，需要实现从服务器获取卷号的功能
 
 ### 4. 客户端界面相关
 
@@ -115,9 +117,9 @@
 
 ### 6. 数据处理相关
 
-- [ ] **[src/DvpCameraCapture.cpp]** - 第137行："TODO 检查文件读写状态(示例：如果队列超过200帧了，则标记 file_io 错误)"，需要实现文件读写状态检查
+- [ ] **[src/cameras/DvpCameraCapture.cpp]** - 第137行："TODO 检查文件读写状态(示例：如果队列超过200帧了，则标记 file_io 错误)"，需要实现文件读写状态检查
 
-- [ ] **[src/DvpCameraCapture.cpp]** - 第75行："TODO 暂时假设启动成功即自检通过"，需要实现真正的自检功能
+- [ ] **[src/cameras/DvpCameraCapture.cpp]** - 第75行："TODO 暂时假设启动成功即自检通过"，需要实现真正的自检功能
 
 ## 架构设计
 
@@ -141,26 +143,26 @@
 ### 第一阶段：Redis 客户端实现
 
 - [ ] **创建 Redis 客户端类**
-  - [ ] 创建 [include/redis/RedisClient.hpp](file:///d:/codespace/CFP/include/protocol/messages.hpp#L1-L38) 头文件
-  - [ ] 创建 [src/redis/RedisClient.cpp](file:///d:/codespace/CFP/src/protocol/LegacyCodec.cpp#L1-L111) 实现文件
-  - [ ] 实现基础连接功能
-  - [ ] 实现 PUBLISH 操作
-  - [ ] 实现 SUBSCRIBE 操作
-  - [ ] 实现 PSUBSCRIBE 操作
-  - [ ] 添加错误处理机制
+  - [x] 创建 [include/redis/RedisClient.hpp](file:///d:/codespace/CFP/include/protocol/messages.hpp#L1-L38) 头文件
+  - [x] 创建 [src/redis/RedisClient.cpp](file:///d:/codespace/CFP/src/protocol/LegacyCodec.cpp#L1-L111) 实现文件
+  - [x] 实现基础连接功能
+  - [x] 实现 PUBLISH 操作
+  - [x] 实现 SUBSCRIBE 操作
+  - [x] 实现 PSUBSCRIBE 操作
+  - [x] 添加错误处理机制
 
 ### 第二阶段：通信逻辑实现
 
-- [ ] **实现主前端机逻辑**
-  - [ ] 实现控制信号监听（端口 7000/19800）
-  - [ ] 实现开始信号广播（`control/start` 通道）
-  - [ ] 实现遥测数据聚合（`telemetry/*` 通道）
-  - [ ] 实现 19700 端口数据上报功能
+- [x] **实现主前端机逻辑**
+  - [x] 实现控制信号监听（端口 7000/19800）
+  - [x] 实现开始信号广播（`control/start` 通道）
+  - [x] 实现遥测数据聚合（`telemetry/*` 通道）
+  - [x] 实现 19700 端口数据上报功能
 
-- [ ] **实现从属前端机逻辑**
-  - [ ] 实现控制信号订阅（`control/start` 通道）
-  - [ ] 实现遥测数据发布（`telemetry/<id>` 通道）
-  - [ ] 实现 19300 端口数据发送功能
+- [x] **实现从属前端机逻辑**
+  - [x] 实现控制信号订阅（`control/start` 通道）
+  - [x] 实现遥测数据发布（`telemetry/<id>` 通道）
+  - [x] 实现 19300 端口数据发送功能
 
 ### 第三阶段：节点识别与区分
 
@@ -185,21 +187,14 @@
 ## 技术选型
 
 - [ ] **Redis 客户端库选择**
-  - [ ] 评估 hiredis + 线程方案
-  - [ ] 评估 cpp-redis + asio 方案
-  - [ ] 确定最终技术方案
+  - [x] 评估 hiredis + 线程方案
+  - [x] 评估 cpp-redis + asio 方案
+  - [x] 确定最终技术方案:cpp_redis+asio
 
 - [ ] **线程安全实现**
   - [ ] 确保 Redis 客户端线程安全
   - [ ] 实现适当的锁机制
   - [ ] 处理异步操作的同步问题
-
-## 依赖项
-
-- [ ] **添加 Redis 客户端库到项目**
-  - [ ] 在 CMakeLists.txt 中添加 Redis 库依赖
-  - [ ] 更新 vcpkg 配置以包含 Redis 客户端库
-  - [ ] 确保跨平台兼容性
 
 ## 注意事项
 

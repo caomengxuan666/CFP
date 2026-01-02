@@ -29,10 +29,11 @@
 #include <shared_mutex>
 #include <vector>
 
-#include "AlgoBase.hpp"
+#include "algo/AlgoBase.hpp"
 #include "algo/AlgorithmConfigTraits.hpp"
 #include "config/AlogoParams.hpp"
 #include "config/ConfigObserver.hpp"
+
 namespace algo {
 
 template <>

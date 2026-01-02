@@ -32,6 +32,7 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <utility>
 
 // 必须先包含 asio
 // #include "asio.hpp"
@@ -42,8 +43,12 @@
 #include "algo/AlgoBase.hpp"
 #include "algo/HoleDetection.hpp"
 #include "business/BusinessManager.hpp"
-#include "cameras/Dvp/DvpCameraBuilder.hpp"
+// #include "cameras/Dvp/DvpCameraBuilder.hpp"
+#include "cameras/CameraFactory.hpp"
+#include "cameras/Ikap/IkapCameraBuilder.hpp"
+#include "cameras/Ikap/IkapCameraCapture.hpp"
 #include "cameras/ImageSignalBus.hpp"
+#include "config/CameraConfig.hpp"
 #include "config/ConfigManager.hpp"
 #include "utils/get_local_ip.h"
 
@@ -75,13 +80,27 @@ int main() {
   // 初始化算法
   auto& config_manager = config::ConfigManager::instance();
   config_manager.start();
+
+  // 直接用config创建相机工厂
+  // TODO(cmx) 后续可以考虑在 @create_camera
+  // 加一个直接返回shared_ptr的接口减少转换开销
+  auto uni_camera = create_camera(
+      CameraBrand::IKap, "cam1",
+      CameraConfig{
+          // 这里可以初始换配置文件
+          // .trigger_mode=true
+          // TODO(cmx) 后续我们需要在 @GlobalConfig 中添加相机的配置文件
+          // 这样就可以达到工厂自动应用的效果
+          // 同时我们也应该在 @CameraManager
+          // 中增加这个工厂接口,利用配置文件直接创建相机
+      });
+  std::shared_ptr<CameraCapture> camera = std::move(uni_camera);
   auto holeDetection = config_manager.create_algorithm<algo::HoleDetection>();
 
-  std::shared_ptr<DvpCameraCapture> camera = nullptr;
   std::atomic<bool> camera_running{false};
 
   auto create_camera = [&holeDetection]() {
-    return DvpCameraBuilder::fromUserId("123")
+    return IkapCameraBuilder::fromUserId("123")
         .onFrame(algo::AlgoAdapter(holeDetection))
         .build();
   };
@@ -99,8 +118,11 @@ int main() {
     std::cout << "Camera started!" << std::endl;
   };
 
-  // 设置开始信号回调
   // 设置开始信号回调 - 适配BusinessManager的回调参数类型
+  // TODO(cmx)
+  // 这里的业务逻辑实际上是启动和应用具体的算法，相机在此之前就要被启动了
+  // 所以每一个相机都要有一个start_camera接口，确保没有算法实例的时候都能成功启动相机
+  // 至于算法可以在收到这个信号之后延迟来绑定
   business_mgr.set_start_callback(
       [start_camera](const std::string& roll_id) { start_camera(); });
 
@@ -118,7 +140,8 @@ int main() {
           report.roll_id = data.roll_id;
           report.features = data.features;
           report.special_images = data.special_images;
-          report.image_data = frame->data;
+          // 从业务逻辑上看貌似是不需要整个的原始图像信息的?
+          // report.image_data = frame->data;
 
           // 发送到主服务器
           report_session->async_send_features(report, [](std::error_code ec) {
@@ -149,6 +172,8 @@ int main() {
                              &camera_running]() {
     while (true) {
       if (camera_running && camera) {
+        // 将camera转换为具体的类
+        camera = std::dynamic_pointer_cast<IkapCameraCapture>(camera);
         auto status = camera->get_status();
 
         // 发送到主服务器

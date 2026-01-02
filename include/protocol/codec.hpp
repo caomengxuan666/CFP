@@ -29,7 +29,7 @@
 #include <optional>
 #include <span>
 
-#include "messages.hpp"
+#include "protocol/messages.hpp"
 
 namespace protocol {
 
