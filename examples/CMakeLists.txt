@@ -12,7 +12,7 @@ foreach(example_file ${EXAMPLE_SOURCES})
     
     # 链接主项目库 - 使用正确的库名
     target_link_libraries(${example_name} PRIVATE     
-        DVPDETECT
+        CFP
     )
 
     if(MSVC)

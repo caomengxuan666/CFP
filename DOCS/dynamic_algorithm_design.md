@@ -1,8 +1,8 @@
-# DvpDetect 动态算法库设计文档
+# CFP 动态算法库设计文档
 
 ## 文档概述
 
-本文档详细描述了 DvpDetect 系统中动态算法库的设计方案。通过实现插件化的算法架构，系统将支持动态加载、替换和更新算法库，无需重新编译整个应用程序。
+本文档详细描述了 CFP 系统中动态算法库的设计方案。通过实现插件化的算法架构，系统将支持动态加载、替换和更新算法库，无需重新编译整个应用程序。
 
 ## 设计背景
 
@@ -147,7 +147,7 @@ extern "C" AlgorithmMetadata get_metadata();
 - Linux: `dlopen` / `dlsym`
 - macOS: `dlopen` / `dlsym`
 
-封装为统一的 [DynamicLibrary](file:///d:/codespace\DvpDetect\include\utils\executable_path.h#L38-L42) 类进行管理。
+封装为统一的 [DynamicLibrary](file:///d:/codespace\CFP\include\utils\executable_path.h#L38-L42) 类进行管理。
 
 ### 3. 算法工厂模式
 

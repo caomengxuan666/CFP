@@ -1,18 +1,14 @@
-# DvpDetect - 工业视觉检测系统
+# CFP - CAPON FRONTEND PROCESSOR
 
-## 关于项目名称
-
-初步建立这个项目的时候我们只考虑了DVP相机，所以我们这个项目叫做DvpDetect.但是现场需要多种的工业相机，所以我们创建了多相机接口框架，实际上我们不止支持DVP相机。我们还开放了IK相机和MIND相机的接口，甚至我们可以通过相机管理器在现场通过一个程序，一台电脑，同时操作十二台三种不同相机的组合。因为良好的抽象接口设计(抽象不依赖于底层细节)，我们得以轻松扩展至多相机系统，因为相机调度仅仅负责图像，转换成数据后不管是算法处理还是服务器通讯发送，都是基于我们自己封装的帧结构统一调度处理。当然考虑到目前阶段的兼容性，我还是保留了单相机接口以适用于现有的项目。
-
-> 未来我们会使用GRPC重构服务器，这一点我已经预留好了接口，替换工作将会非常容易
+> **工业视觉检测系统** - 一个支持多种工业相机的C++/Qt视觉检测平台
 
 ## 项目概述
 
-DvpDetect 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP/IK/MIND相机控制、图像采集与处理（如孔洞检测）。本项目采用模块化设计，支持 OpenCV 图像处理功能按需启用，适用于工业自动化场景。
+CFP (CAPON Frontend Processor) 是一个基于 C++ 的工业视觉检测应用，专注于 DVP/IK/MIND相机控制、图像采集与处理（如孔洞检测）。本项目采用模块化设计，支持 OpenCV 图像处理功能按需启用，适用于工业自动化场景。
 
 当前版本默认运行在 **单机单相机模式** 下，即一台电脑控制一个相机。此模式满足大多数现场部署需求，具备良好的稳定性与实时性。
 
-> ⚠️ 注意：虽然目前只使用单相机，但我们已经实现了完整的 **多相机接口支持**，为后续扩展至多相机系统做好准备。当系统升级为多相机配置时，所有相机均在同一主机上运行，因此无需依赖 Redis 进行跨主机变量同步，简化了架构复杂度。
+> ⚠️ 注意：虽然目前只使用单相机，但我们已经实现了完整的 **多相机接口框架**，为后续扩展至多相机系统做好准备。当系统升级为多相机配置时，所有相机均在同一主机上运行，因此无需依赖 Redis 进行跨主机变量同步，简化了架构复杂度。
 
 在当前阶段，系统仍然需要 Redis 来处理分布式通信需求，特别是在多台机器之间同步状态和控制信号。Redis PUB/SUB 机制被用于协调主前端机（101）和其他前端机之间的通信。
 
@@ -66,6 +62,58 @@ DvpDetect 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP
 
 ---
 
+## 项目架构与目录结构
+
+```
+CFP Project Structure
+├── DOCS                    # 设计文档目录
+│   ├── algorithm_signal_mechanism.md
+│   ├── client_design.md
+│   ├── communication_protocol.md
+│   ├── dynamic_algorithm_design.md
+│   ├── multi_camera_interface.md
+│   └── system_architecture.md
+├── cmake                   # CMake模块和脚本
+│   ├── ApplyPatch.cmake
+│   ├── DeployQt.cmake
+│   ├── FindDVP2.cmake
+│   ├── FindIKap.cmake
+│   └── find_Qt_Dependency.cmake
+├── examples                # 示例代码
+│   ├── basic_example.cpp
+│   ├── generic_camera_example.cpp
+│   └── multi_camera_example.cpp
+├── include                 # 头文件目录
+│   ├── algo                # 算法相关头文件
+│   ├── business            # 业务逻辑
+│   ├── cameras             # 相机相关类 (Dvp, Ikap)
+│   ├── config              # 配置管理
+│   ├── protocol            # 通信协议
+│   ├── redis               # Redis客户端
+│   └── utils               # 工具函数
+├── patches                 # 补丁文件
+├── script                  # Python脚本
+├── src                     # 源代码目录
+│   ├── algo                # 算法实现
+│   ├── business            # 业务逻辑实现
+│   ├── cameras             # 相机相关实现 (Dvp, Ikap)
+│   ├── client              # 客户端UI实现
+│   ├── protocol            # 通信协议实现
+│   ├── redis               # Redis客户端实现
+│   └── utils               # 工具函数实现
+├── tests                   # 测试代码
+├── third_party             # 第三方库
+│   ├── AntDesign           # UI库
+│   ├── BS_THREAD_POOL      # 线程池库
+│   ├── DVP_SDK             # DVP相机SDK
+│   ├── IKap                # IK相机SDK
+│   ├── asio                # 异步I/O库
+│   ├── concurrentqueue     # 并发队列
+│   ├── cpp_redis           # Redis客户端
+│   └── googletest          # 测试框架
+└── CMakeLists.txt          # CMake构建配置
+```
+
 ## 架构特性
 
 - ✅ 支持 OpenCV 按需启用（CMake 控制）
@@ -73,6 +121,7 @@ DvpDetect 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP
 - ✅ 支持 Debug/Release 不同链接策略
 - ✅ 高度模块化设计，便于算法替换
 - ✅ 已实现多相机接口框架（未来可用）
+- ✅ 支持多种工业相机（DVP/IK/MIND）
 - ✅ 当前阶段使用 Redis 进行跨主机状态同步
 - ✅ 未来如果多相机模式更优秀，则不再需要 Redis 跨主机同步（因所有组件在同一主机）
 - ✅ 规划动态算法库支持（未来实现）
@@ -83,7 +132,7 @@ DvpDetect 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         DvpDetect Architecture                              │
+│                         CFP Architecture                              │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Client Layer (UI)                                                          │
 │  ┌─────────────────────────────────────────────────────────────────────────┐│
@@ -108,16 +157,18 @@ DvpDetect 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP
 │  Application Layer                                                          │
 │  ┌─────────────────────────────────────────────────────────────────────────┐│
 │  │  DvpCameraBuilder  DvpCameraCapture  DvpEventManager  FrameProcessor    ││
+│  │  IkapCameraBuilder IkapCameraCapture IkapEventManager                   ││
 │  └─────────────────────────────────────────────────────────────────────────┘│
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Camera Management Layer                                                    │
 │  ┌─────────────────────────────────────────────────────────────────────────┐│
 │  │  CameraFactory  CameraManager  CameraCapture  DvpCameraManager          ││
+│  │  IkapCameraManager  DvpCameraManager                                     ││
 │  └─────────────────────────────────────────────────────────────────────────┘│
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Configuration Layer                                                        │
 │  ┌─────────────────────────────────────────────────────────────────────────┐│
-│  │  DvpConfig  ConfigManager  CameraConfig  AlogoParams                     ││
+│  │  DvpConfig  IkapConfig  ConfigManager  CameraConfig  AlogoParams         ││
 │  └─────────────────────────────────────────────────────────────────────────┘│
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Algorithm Layer                                                            │
@@ -125,25 +176,26 @@ DvpDetect 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP
 │  │  AlgoBase  GenericAlgorithmConfigObserver  HoleDetection                 ││
 │  └─────────────────────────────────────────────────────────────────────────┘│
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  DVP SDK Layer                                                              │
+│  DVP/IK/MIND SDK Layer                                                      │
 │  ┌─────────────────────────────────────────────────────────────────────────┐│
 │  │  dvpHandle  dvpOpen  dvpStart  dvpRegisterStreamCallback                 ││
+│  │  ikapHandle ikapOpen ikapStart ikapRegisterStreamCallback                ││
 │  └─────────────────────────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## 模块关系详解
 
-### 1. DvpCameraCapture 与 FrameProcessor
+### 1. CameraCapture 与 FrameProcessor
 
 ```
-DvpCameraCapture → FrameProcessor → AlgoAdapter → AlgoBase
+CameraCapture → FrameProcessor → AlgoAdapter → AlgoBase
 ```
 
-- [DvpCameraCapture](file:///d:/codespace/DvpDetect/include/DvpCameraCapture.hpp#L15-L72)是相机捕获的核心类，负责与DVP SDK交互
-- [FrameProcessor](file:///d:/codespace/DvpDetect/include/FrameProcessor.hpp#L52-L65)是处理图像帧的接口，定义了`process`方法
-- [DvpCameraCapture](file:///d:/codespace/DvpDetect/include/DvpCameraCapture.hpp#L15-L72)通过`user_processor_`成员变量持有[FrameProcessor](file:///d:/codespace/DvpDetect/include/FrameProcessor.hpp#L52-L65)实例
-- 当相机产生新帧时，[DvpCameraCapture::process_frame](file:///d:/codespace/DvpDetect/src/DvpCameraCapture.cpp#L114-L135)将帧数据传递给[FrameProcessor](file:///d:/codespace/DvpDetect/include/FrameProcessor.hpp#L52-L65)进行处理
+- [CameraCapture](file:///d:/codespace/CFP/include/cameras/CameraCapture.hpp#L8-L18)是相机捕获的核心抽象类，负责与相机SDK交互
+- [FrameProcessor](file:///d:/codespace/CFP/include/cameras/FrameProcessor.hpp#L52-L65)是处理图像帧的接口，定义了`process`方法
+- [CameraCapture](file:///d:/codespace/CFP/include/cameras/CameraCapture.hpp#L8-L18)通过`user_processor_`成员变量持有[FrameProcessor](file:///d:/codespace/CFP/include/cameras/FrameProcessor.hpp#L52-L65)实例
+- 当相机产生新帧时，[CameraCapture::process_frame](file:///d:/codespace/CFP/src/cameras/DvpCameraCapture.cpp#L114-L135)将帧数据传递给[FrameProcessor](file:///d:/codespace/CFP/include/cameras/FrameProcessor.hpp#L52-L65)进行处理
 
 ### 2. Camera Management 模块
 
@@ -151,19 +203,19 @@ DvpCameraCapture → FrameProcessor → AlgoAdapter → AlgoBase
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                      Camera Management Architecture                         │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  CameraFactory → CameraManager → DvpCameraCapture → DVP SDK                 │
+│  CameraFactory → CameraManager → CameraCapture → Camera SDK                 │
 │        ↓            ↓              ↓                                         │
 │   Create Cameras  Manage List   Capture Frames                              │
 │        ↓            ↓              ↓                                         │
-│   CameraCapture ← CameraConfig ← DvpConfig                                  │
+│   CameraCapture ← CameraConfig ← DvpConfig/IkapConfig                       │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- [CameraFactory](file:///d:/codespace/DvpDetect/include/cameras/CameraFactory.hpp#L10-L27)负责创建不同类型的相机实例
-- [CameraManager](file:///d:/codespace/DvpDetect/include/cameras/CameraManager.hpp#L13-L56)管理多个相机实例的生命周期
-- [CameraCapture](file:///d:/codespace/DvpDetect/include/CameraCapture.hpp#L8-L18)定义了相机捕获的抽象接口
-- [DvpCameraCapture](file:///d:/codespace/DvpDetect/include/DvpCameraCapture.hpp#L15-L72)是DVP相机的具体实现
-- [CameraConfig](file:///d:/codespace/DvpDetect/include/config/CameraConfig.hpp#L6-L14)定义相机配置参数结构
+- [CameraFactory](file:///d:/codespace/CFP/include/cameras/CameraFactory.hpp#L10-L27)负责创建不同类型的相机实例（DVP/IK/MIND）
+- [CameraManager](file:///d:/codespace/CFP/include/cameras/CameraManager.hpp#L13-L56)管理多个相机实例的生命周期
+- [CameraCapture](file:///d:/codespace/CFP/include/cameras/CameraCapture.hpp#L8-L18)定义了相机捕获的抽象接口
+- [DvpCameraCapture](file:///d:/codespace/CFP/include/cameras/Dvp/DvpCameraCapture.hpp#L15-L72)和[IkapCameraCapture](file:///d:/codespace/CFP/include/cameras/Ikap/IkapCameraCapture.hpp#L15-L72)是具体实现
+- [CameraConfig](file:///d:/codespace/CFP/include/config/CameraConfig.hpp#L6-L14)定义相机配置参数结构
 
 ### 3. Protocol Communication 模块
 
@@ -183,12 +235,12 @@ DvpCameraCapture → FrameProcessor → AlgoAdapter → AlgoBase
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- [ICodec](file:///d:/codespace/DvpDetect/include/protocol/codec.hpp#L8-L17)定义编码解码接口
-- [LegacyCodec](file:///d:/codespace/DvpDetect/include/protocol/LegacyCodec.hpp#L7-L15)实现传统协议编解码
-- [ITransportAdapter](file:///d:/codespace/DvpDetect/include/protocol/TransportAdapter.hpp#L10-L22)定义传输适配器接口
-- [AsioTcpTransport](file:///d:/codespace/DvpDetect/include/protocol/AsioTcpTransport.hpp#L12-L32)实现TCP传输
-- [ProtocolSession](file:///d:/codespace/DvpDetect/include/protocol/ProtocolSession.hpp#L15-L37)管理协议会话
-- [messages.hpp](file:///d:/codespace/DvpDetect/include/protocol/messages.hpp)定义协议消息格式
+- [ICodec](file:///d:/codespace/CFP/include/protocol/codec.hpp#L8-L17)定义编码解码接口
+- [LegacyCodec](file:///d:/codespace/CFP/include/protocol/LegacyCodec.hpp#L7-L15)实现传统协议编解码
+- [ITransportAdapter](file:///d:/codespace/CFP/include/protocol/TransportAdapter.hpp#L10-L22)定义传输适配器接口
+- [AsioTcpTransport](file:///d:/codespace/CFP/include/protocol/AsioTcpTransport.hpp#L12-L32)实现TCP传输
+- [ProtocolSession](file:///d:/codespace/CFP/include/protocol/ProtocolSession.hpp#L15-L37)管理协议会话
+- [messages.hpp](file:///d:/codespace/CFP/include/protocol/messages.hpp)定义协议消息格式
 
 ### 4. MultiCameraCoordinator 多相机协调器
 
@@ -204,10 +256,10 @@ DvpCameraCapture → FrameProcessor → AlgoAdapter → AlgoBase
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- [MultiCameraCoordinator](file:///d:/codespace/DvpDetect/include/MultiCameraCoordinator.hpp#L14-L56)是多相机协调处理的核心组件
+- [MultiCameraCoordinator](file:///d:/codespace/CFP/include/cameras/MultiCameraCoordinator.hpp#L14-L56)是多相机协调处理的核心组件
 - 接收来自多个相机的帧数据
 - 使用融合函数将多个帧数据合并为单个融合帧
-- 通过`make_processor_for()`方法为每个相机创建专用的[FrameProcessor](file:///d:/codespace/DvpDetect/include/cameras/FrameProcessor.hpp#L52-L65)
+- 通过`make_processor_for()`方法为每个相机创建专用的[FrameProcessor](file:///d:/codespace/CFP/include/cameras/FrameProcessor.hpp#L52-L65)
 - 提供`operator[]`操作符重载，便于访问特定相机的处理器
 - 支持下游处理器，可将融合后的帧传递给算法处理
 - 线程安全，使用互斥锁保护共享资源
@@ -218,8 +270,8 @@ DvpCameraCapture → FrameProcessor → AlgoAdapter → AlgoBase
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                    Algo-FrameProcessor Interaction                          │
 ├─────────────────────────────────────────────────────────────────────────────┤
-│  Camera Data → DvpCameraCapture → FrameProcessor → AlgoAdapter → AlgoBase  │
-│        ↓              ↓            ↓             ↓            ↓             │
+│  Camera Data → CameraCapture → FrameProcessor → AlgoAdapter → AlgoBase     │
+│        ↓            ↓            ↓             ↓            ↓             │
 │   Raw Frame    OnFrameCallback  process()   AlgoAdapter   process()         │
 │                                         ↓                                  │
 │                                  Algo Implementation                       │
@@ -228,13 +280,13 @@ DvpCameraCapture → FrameProcessor → AlgoAdapter → AlgoBase
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-- [AlgoBase](file:///d:/codespace/DvpDetect/include/AlgoBase.hpp#L32-L105)是所有图像处理算法的抽象基类
-- [AlgoAdapter](file:///d:/codespace/DvpDetect/include/AlgoBase.hpp#L136-L150)是适配器类，继承[FrameProcessor](file:///d:/codespace/DvpDetect/include/FrameProcessor.hpp#L52-L65)并持有[AlgoBase](file:///d:/codespace/DvpDetect/include/AlgoBase.hpp#L32-L105)实例
+- [AlgoBase](file:///d:/codespace/CFP/include/algo/AlgoBase.hpp#L32-L105)是所有图像处理算法的抽象基类
+- [AlgoAdapter](file:///d:/codespace/CFP/include/algo/AlgoBase.hpp#L136-L150)是适配器类，继承[FrameProcessor](file:///d:/codespace/CFP/include/cameras/FrameProcessor.hpp#L52-L65)并持有[AlgoBase](file:///d:/codespace/CFP/include/algo/AlgoBase.hpp#L32-L105)实例
 - 当相机帧到达时，执行路径为：
-  1. [DvpCameraCapture::process_frame](file:///d:/codespace/DvpDetect/src/DvpCameraCapture.cpp#L114-L135)调用[FrameProcessor::process](file:///d:/codespace/DvpDetect/include/FrameProcessor.hpp#L55-L58)
-  2. 实际执行[AlgoAdapter::process](file:///d:/codespace/DvpDetect/include/AlgoBase.hpp#L145-L147)，将帧传递给[AlgoBase](file:///d:/codespace/DvpDetect/include/AlgoBase.hpp#L32-L105)
-  3. [AlgoBase](file:///d:/codespace/DvpDetect/include/AlgoBase.hpp#L32-L105)的派生类实现具体的算法逻辑
-  4. 算法通过[emit_image](file:///d:/codespace/DvpDetect/include/AlgoBase.hpp#L102-L106)方法将结果发送到[ImageSignalBus](file:///d:/codespace/DvpDetect/include/ImageSignalBus.hpp#L28-L74)
+  1. [CameraCapture::process_frame](file:///d:/codespace/CFP/src/cameras/DvpCameraCapture.cpp#L114-L135)调用[FrameProcessor::process](file:///d:/codespace/CFP/include/cameras/FrameProcessor.hpp#L55-L58)
+  2. 实际执行[AlgoAdapter::process](file:///d:/codespace/CFP/include/algo/AlgoBase.hpp#L145-L147)，将帧传递给[AlgoBase](file:///d:/codespace/CFP/include/algo/AlgoBase.hpp#L32-L105)
+  3. [AlgoBase](file:///d:/codespace/CFP/include/algo/AlgoBase.hpp#L32-L105)的派生类实现具体的算法逻辑
+  4. 算法通过[emit_image](file:///d:/codespace/CFP/include/algo/AlgoBase.hpp#L102-L106)方法将结果发送到[ImageSignalBus](file:///d:/codespace/CFP/include/cameras/ImageSignalBus.hpp#L28-L74)
 
 ### 6. 算法源信息宏与客户端信号源订阅
 
@@ -264,8 +316,8 @@ DvpCameraCapture → FrameProcessor → AlgoAdapter → AlgoBase
 
 ### 7. ImageSignalBus 信号总线
 
-- [ImageSignalBus](file:///d:/codespace/DvpDetect/include/ImageSignalBus.hpp#L28-L74)作为图像信号的发布-订阅系统
-- 算法通过[emit_image](file:///d:/codespace/DvpDetect/include/AlgoBase.hpp#L102-L106)方法发布处理结果
+- [ImageSignalBus](file:///d:/codespace/CFP/include/cameras/ImageSignalBus.hpp#L28-L74)作为图像信号的发布-订阅系统
+- 算法通过[emit_image](file:///d:/codespace/CFP/include/algo/AlgoBase.hpp#L102-L106)方法发布处理结果
 - UI组件或其他模块可以订阅特定信号名称的图像数据
 
 ## 执行流程
@@ -273,13 +325,13 @@ DvpCameraCapture → FrameProcessor → AlgoAdapter → AlgoBase
 ### 1. 初始化阶段
 
 ```
-DvpCameraBuilder → build() → DvpCameraCapture → dvpOpen → 初始化配置
+CameraBuilder → build() → CameraCapture → Open Camera → 初始化配置
 ```
 
-- 使用[DvpCameraBuilder](file:///d:/codespace/DvpDetect/include/DvpCameraBuilder.hpp#L28-L149)构建相机实例
+- 使用[CameraFactory](file:///d:/codespace/CFP/include/cameras/CameraFactory.hpp#L10-L27)或具体相机的Builder类构建相机实例
 - 通过相机ID、友好名称或索引打开相机
 - 应用配置参数（ROI、曝光、增益等）
-- 创建[DvpCameraCapture](file:///d:/codespace/DvpDetect/include/DvpCameraCapture.hpp#L15-L72)实例并注册帧回调
+- 创建[CameraCapture](file:///d:/codespace/CFP/include/cameras/CameraCapture.hpp#L8-L18)实例并注册帧回调
 
 ### 2. 多相机协调处理流程
 
@@ -287,8 +339,8 @@ DvpCameraBuilder → build() → DvpCameraCapture → dvpOpen → 初始化配�
 MultiCameraCoordinator(num_cams, fusion_func) → make_processor_for(i) → on_frame(i, frame) → fuse_func
 ```
 
-- 创建[MultiCameraCoordinator](file:///d:/codespace/DvpDetect/include/MultiCameraCoordinator.hpp#L14-L56)实例，指定相机数量和融合函数
-- 为每个相机调用`make_processor_for()`方法创建对应的[FrameProcessor](file:///d:/codespace/DvpDetect/include/FrameProcessor.hpp#L52-L65)
+- 创建[MultiCameraCoordinator](file:///d:/codespace/CFP/include/cameras/MultiCameraCoordinator.hpp#L14-L56)实例，指定相机数量和融合函数
+- 为每个相机调用`make_processor_for()`方法创建对应的[FrameProcessor](file:///d:/codespace/CFP/include/cameras/FrameProcessor.hpp#L52-L65)
 - 每个相机的帧数据通过`on_frame()`方法进入协调器
 - 当所有相机的帧数据都到达时，执行融合函数
 - 将融合后的帧传递给下游处理器进行算法处理
@@ -299,18 +351,18 @@ MultiCameraCoordinator(num_cams, fusion_func) → make_processor_for(i) → on_f
 ConfigManager → create_algorithm() → AlgoAdapter → AlgoBase
 ```
 
-- [ConfigManager](file:///d:/codespace/DvpDetect/include/config/ConfigManager.hpp#L24-L49)负责创建和管理算法实例
-- `create_algorithm<T>()`方法创建具体算法实例并包装在[AlgoAdapter](file:///d:/codespace/DvpDetect/include/AlgoBase.hpp#L136-L150)中
+- [ConfigManager](file:///d:/codespace/CFP/include/config/ConfigManager.hpp#L24-L49)负责创建和管理算法实例
+- `create_algorithm<T>()`方法创建具体算法实例并包装在[AlgoAdapter](file:///d:/codespace/CFP/include/algo/AlgoBase.hpp#L136-L150)中
 - 算法可以声明其需要的信号源（通过`declare_signals`）
-- [AlgoAdapter](file:///d:/codespace/DvpDetect/include/AlgoBase.hpp#L136-L150)将算法适配为[FrameProcessor](file:///d:/codespace/DvpDetect/include/FrameProcessor.hpp#L52-L65)接口
+- [AlgoAdapter](file:///d:/codespace/CFP/include/algo/AlgoBase.hpp#L136-L150)将算法适配为[FrameProcessor](file:///d:/codespace/CFP/include/cameras/FrameProcessor.hpp#L52-L65)接口
 
 ### 4. 配置阶段
 
 ```
-DvpConfig → set_config() → update_camera_params() → 应用到SDK
+CameraConfig → set_config() → update_camera_params() → 应用到SDK
 ```
 
-- 通过[set_config](file:///d:/codespace/DvpDetect/src/DvpCameraCapture.cpp#L58-L64)方法动态更新相机配置
+- 通过[set_config](file:///d:/codespace/CFP/src/cameras/DvpCameraCapture.cpp#L58-L64)方法动态更新相机配置
 - 配置参数包括：
   - 曝光时间
   - 模拟增益
@@ -323,13 +375,13 @@ DvpConfig → set_config() → update_camera_params() → 应用到SDK
 ### 5. 捕获阶段
 
 ```
-start() → dvpStart → OnFrameCallback → process_frame → user_processor
+start() → Start Camera → OnFrameCallback → process_frame → user_processor
 ```
 
 - 启动相机捕获
 - SDK触发帧回调
-- [DvpCameraCapture::OnFrameCallback](file:///d:/codespace/DvpDetect/src/DvpCameraCapture.cpp#L106-L112)接收原始数据
-- [process_frame](file:///d:/codespace/DvpDetect/src/DvpCameraCapture.cpp#L114-L135)处理帧数据
+- [CameraCapture::OnFrameCallback](file:///d:/codespace/CFP/src/cameras/DvpCameraCapture.cpp#L106-L112)接收原始数据
+- [process_frame](file:///d:/codespace/CFP/src/cameras/DvpCameraCapture.cpp#L114-L135)处理帧数据
 - 使用线程池异步执行用户定义的帧处理器
 - 将原始图像存入队列供后续处理
 
@@ -339,18 +391,18 @@ start() → dvpStart → OnFrameCallback → process_frame → user_processor
 FrameProcessor::process() → AlgoAdapter::process() → AlgoBase::process() → 算法实现
 ```
 
-- 帧数据通过[FrameProcessor](file:///d:/codespace/DvpDetect/include/FrameProcessor.hpp#L52-L65)接口传递
-- [AlgoAdapter](file:///d:/codespace/DvpDetect/include/AlgoBase.hpp#L136-L150)将调用转发到[AlgoBase](file:///d:/codespace/DvpDetect/include/AlgoBase.hpp#L32-L105)实现
+- 帧数据通过[FrameProcessor](file:///d:/codespace/CFP/include/cameras/FrameProcessor.hpp#L52-L65)接口传递
+- [AlgoAdapter](file:///d:/codespace/CFP/include/algo/AlgoBase.hpp#L136-L150)将调用转发到[AlgoBase](file:///d:/codespace/CFP/include/algo/AlgoBase.hpp#L32-L105)实现
 - 算法处理图像数据
-- 算法通过[ImageSignalBus](file:///d:/codespace/DvpDetect/include/ImageSignalBus.hpp#L28-L74)发布处理结果
+- 算法通过[ImageSignalBus](file:///d:/codespace/CFP/include/cameras/ImageSignalBus.hpp#L28-L74)发布处理结果
 
 ### 7. 事件处理
 
 ```
-register_event_handler() → DvpEventManager → 处理相机事件
+register_event_handler() → EventManager → 处理相机事件
 ```
 
-- 通过[DvpEventManager](file:///d:/codespace/DvpDetect/include/DvpEventManager.hpp#L16-L32)注册事件处理器
+- 通过[EventManager](file:///d:/codespace/CFP/include/cameras/Dvp/DvpEventManager.hpp#L16-L32)注册事件处理器
 - 监听相机状态变化
 - 处理错误和异常情况
 
@@ -361,29 +413,30 @@ Client Request → ProtocolSession → LegacyCodec → AsioTcpTransport → Serv
 ```
 
 - 客户端发起请求
-- [ProtocolSession](file:///d:/codespace/DvpDetect/include/protocol/ProtocolSession.hpp#L15-L37)管理通信会话
-- [LegacyCodec](file:///d:/codespace/DvpDetect/include/protocol/LegacyCodec.hpp#L7-L15)编码/解码数据
-- [AsioTcpTransport](file:///d:/codespace/DvpDetect/include/protocol/AsioTcpTransport.hpp#L12-L32)处理TCP传输
+- [ProtocolSession](file:///d:/codespace/CFP/include/protocol/ProtocolSession.hpp#L15-L37)管理通信会话
+- [LegacyCodec](file:///d:/codespace/CFP/include/protocol/LegacyCodec.hpp#L7-L15)编码/解码数据
+- [AsioTcpTransport](file:///d:/codespace/CFP/include/protocol/AsioTcpTransport.hpp#L12-L32)处理TCP传输
 - 服务端接收并处理请求
 
 ## 核心组件
 
 ### Protocol Communication Components
 
-- [ICodec](file:///d:/codespace/DvpDetect/include/protocol/codec.hpp#L8-L17) - 定义协议编解码接口
-- [LegacyCodec](file:///d:/codespace/DvpDetect/include/protocol/LegacyCodec.hpp#L7-L15) - 实现传统协议编解码
-- [ITransportAdapter](file:///d:/codespace/DvpDetect/include/protocol/TransportAdapter.hpp#L10-L22) - 定义传输接口
-- [AsioTcpTransport](file:///d:/codespace/DvpDetect/include/protocol/AsioTcpTransport.hpp#L12-L32) - 基于Asio的TCP传输实现
-- [ProtocolSession](file:///d:/codespace/DvpDetect/include/protocol/ProtocolSession.hpp#L15-L37) - 管理协议会话
-- [messages.hpp](file:///d:/codespace/DvpDetect/include/protocol/messages.hpp) - 定义协议消息格式
+- [ICodec](file:///d:/codespace/CFP/include/protocol/codec.hpp#L8-L17) - 定义协议编解码接口
+- [LegacyCodec](file:///d:/codespace/CFP/include/protocol/LegacyCodec.hpp#L7-L15) - 实现传统协议编解码
+- [ITransportAdapter](file:///d:/codespace/CFP/include/protocol/TransportAdapter.hpp#L10-L22) - 定义传输接口
+- [AsioTcpTransport](file:///d:/codespace/CFP/include/protocol/AsioTcpTransport.hpp#L12-L32) - 基于Asio的TCP传输实现
+- [ProtocolSession](file:///d:/codespace/CFP/include/protocol/ProtocolSession.hpp#L15-L37) - 管理协议会话
+- [messages.hpp](file:///d:/codespace/CFP/include/protocol/messages.hpp) - 定义协议消息格式
 
 ### Camera Management Components
 
-- [CameraFactory](file:///d:/codespace/DvpDetect/include/cameras/CameraFactory.hpp#L10-L27) - 相机创建工厂
-- [CameraManager](file:///d:/codespace/DvpDetect/include/cameras/CameraManager.hpp#L13-L56) - 相机管理器
-- [CameraCapture](file:///d:/codespace/DvpDetect/include/CameraCapture.hpp#L8-L18) - 相机捕获接口
-- [DvpCameraCapture](file:///d:/codespace/DvpDetect/include/DvpCameraCapture.hpp#L15-L72) - DVP相机捕获实现
-- [CameraConfig](file:///d:/codespace/DvpDetect/include/config/CameraConfig.hpp#L6-L14) - 相机配置结构
+- [CameraFactory](file:///d:/codespace/CFP/include/cameras/CameraFactory.hpp#L10-L27) - 相机创建工厂
+- [CameraManager](file:///d:/codespace/CFP/include/cameras/CameraManager.hpp#L13-L56) - 相机管理器
+- [CameraCapture](file:///d:/codespace/CFP/include/cameras/CameraCapture.hpp#L8-L18) - 相机捕获接口
+- [DvpCameraCapture](file:///d:/codespace/CFP/include/cameras/Dvp/DvpCameraCapture.hpp#L15-L72) - DVP相机捕获实现
+- [IkapCameraCapture](file:///d:/codespace/CFP/include/cameras/Ikap/IkapCameraCapture.hpp#L15-L72) - IK相机捕获实现
+- [CameraConfig](file:///d:/codespace/CFP/include/config/CameraConfig.hpp#L6-L14) - 相机配置结构
 
 ### MultiCameraCoordinator
 
@@ -393,20 +446,20 @@ Client Request → ProtocolSession → LegacyCodec → AsioTcpTransport → Serv
 - 提供线程安全的帧处理机制
 - 支持下游处理器链式处理
 
-### DvpCameraCapture
+### CameraCapture
 
 - 相机捕获的核心类
-- 封装DVP SDK功能
+- 封装相机SDK功能
 - 管理相机状态和配置
 - 提供线程安全的配置更新
 
-### DvpCameraBuilder
+### CameraBuilder
 
 - 相机实例构建器
 - 链式API配置相机参数
 - 简化相机创建过程
 
-### DvpEventManager
+### EventManager
 
 - 事件处理管理器
 - 注册和分发相机事件
@@ -422,11 +475,11 @@ Client Request → ProtocolSession → LegacyCodec → AsioTcpTransport → Serv
 
 - 所有图像算法的抽象基类
 - 定义算法接口和配置机制
-- 通过[AlgoAdapter](file:///d:/codespace/DvpDetect/include/AlgoBase.hpp#L136-L150)适配到[FrameProcessor](file:///d:/codespace/DvpDetect/include/FrameProcessor.hpp#L52-L65)接口
+- 通过[AlgoAdapter](file:///d:/codespace/CFP/include/algo/AlgoBase.hpp#L136-L150)适配到[FrameProcessor](file:///d:/codespace/CFP/include/cameras/FrameProcessor.hpp#L52-L65)接口
 
 ### AlgoAdapter
 
-- 适配器类，将[AlgoBase](file:///d:/codespace/DvpDetect/include/AlgoBase.hpp#L32-L105)算法适配为[FrameProcessor](file:///d:/codespace/DvpDetect/include/FrameProcessor.hpp#L52-L65)接口
+- 适配器类，将[AlgoBase](file:///d:/codespace/CFP/include/algo/AlgoBase.hpp#L32-L105)算法适配为[FrameProcessor](file:///d:/codespace/CFP/include/cameras/FrameProcessor.hpp#L52-L65)接口
 - 使算法可以作为帧处理器使用
 
 ### ImageSignalBus
@@ -435,7 +488,7 @@ Client Request → ProtocolSession → LegacyCodec → AsioTcpTransport → Serv
 - 发布-订阅模式传输图像数据
 - 解耦算法和UI显示
 
-### DvpConfig
+### CameraConfig
 
 - 相机配置数据结构
 - 包含所有相机参数
@@ -445,7 +498,7 @@ Client Request → ProtocolSession → LegacyCodec → AsioTcpTransport → Serv
 
 ```
 Main Thread: UI and Camera Control
-├── DvpCameraCapture Thread: Frame Callbacks
+├── CameraCapture Thread: Frame Callbacks
 │   └── BS Thread Pool: Image Processing
 │       ├── FrameProcessor (AlgoAdapter)
 │       │   └── AlgoBase Implementation
@@ -458,27 +511,27 @@ Main Thread: UI and Camera Control
 ```
 
 - 主线程处理UI和相机控制
-- [DvpCameraCapture](file:///d:/codespace/DvpDetect/include/DvpCameraCapture.hpp#L15-L72)线程处理SDK回调
+- [CameraCapture](file:///d:/codespace/CFP/include/cameras/CameraCapture.hpp#L8-L18)线程处理SDK回调
 - 线程池异步执行图像算法
-- [MultiCameraCoordinator](file:///d:/codespace/DvpDetect/include/MultiCameraCoordinator.hpp#L14-L56)线程处理多相机帧同步和融合
+- [MultiCameraCoordinator](file:///d:/codespace/CFP/include/cameras/MultiCameraCoordinator.hpp#L14-L56)线程处理多相机帧同步和融合
 - 事件管理器处理相机事件
 - 协议通信处理网络I/O
 
 ## 数据流
 
 ```
-Camera 1 Raw Data → DvpCameraCapture → FrameProcessor → MultiCameraCoordinator
-Camera 2 Raw Data → DvpCameraCapture → FrameProcessor → MultiCameraCoordinator → Frame Fusion → Algorithm
-Camera N Raw Data → DvpCameraCapture → FrameProcessor → MultiCameraCoordinator
+Camera 1 Raw Data → CameraCapture → FrameProcessor → MultiCameraCoordinator
+Camera 2 Raw Data → CameraCapture → FrameProcessor → MultiCameraCoordinator → Frame Fusion → Algorithm
+Camera N Raw Data → CameraCapture → FrameProcessor → MultiCameraCoordinator
                       ↓
               Configuration Manager ← Dynamic Updates
                       ↓
         ProtocolSession ← → Transport → Server/Client
 ```
 
-- 原始相机数据进入[DvpCameraCapture](file:///d:/codespace/DvpDetect/include/DvpCameraCapture.hpp#L15-L72)
-- 每个相机的帧数据通过对应的[FrameProcessor](file:///d:/codespace/DvpDetect/include/FrameProcessor.hpp#L52-L65)传递给[MultiCameraCoordinator](file:///d:/codespace/DvpDetect/include/MultiCameraCoordinator.hpp#L14-L56)
-- [MultiCameraCoordinator](file:///d:/codespace/DvpDetect/include/MultiCameraCoordinator.hpp#L14-L56)收集所有相机的帧数据
+- 原始相机数据进入[CameraCapture](file:///d:/codespace/CFP/include/cameras/CameraCapture.hpp#L8-L18)
+- 每个相机的帧数据通过对应的[FrameProcessor](file:///d:/codespace/CFP/include/cameras/FrameProcessor.hpp#L52-L65)传递给[MultiCameraCoordinator](file:///d:/codespace/CFP/include/cameras/MultiCameraCoordinator.hpp#L14-L56)
+- [MultiCameraCoordinator](file:///d:/codespace/CFP/include/cameras/MultiCameraCoordinator.hpp#L14-L56)收集所有相机的帧数据
 - 执行融合函数生成融合帧
 - 将融合帧传递给下游算法处理
 - 配置管理器动态更新参数
@@ -535,8 +588,8 @@ class GrpcTransport : public protocol::ITransportAdapter {
 };
 ```
 
-- [ICodec](file:///d:/codespace/DvpDetect/include/protocol/codec.hpp#L8-L17)接口将用于实现gRPC编解码
-- [ITransportAdapter](file:///d:/codespace/DvpDetect/include/protocol/TransportAdapter.hpp#L10-L22)接口将用于实现gRPC传输
+- [ICodec](file:///d:/codespace/CFP/include/protocol/codec.hpp#L8-L17)接口将用于实现gRPC编解码
+- [ITransportAdapter](file:///d:/codespace/CFP/include/protocol/TransportAdapter.hpp#L10-L22)接口将用于实现gRPC传输
 - 使用Protocol Buffers进行数据序列化
 - 提供更好的跨语言支持和性能
 
@@ -544,12 +597,12 @@ class GrpcTransport : public protocol::ITransportAdapter {
 
 更多技术细节请参见 `DOCS/` 目录下的设计文档：
 
-- [DOCS/communication_protocol.md](file:///d:/codespace/DvpDetect/DOCS/communication_protocol.md): 详细描述系统中各个组件之间的通信协议
-- [DOCS/system_architecture.md](file:///d:/codespace/DvpDetect/DOCS/system_architecture.md): 详细描述系统整体架构设计
-- [DOCS/multi_camera_interface.md](file:///d:/codespace/DvpDetect/DOCS/multi_camera_interface.md): 详细描述多相机接口设计和实现方案
-- [DOCS/dynamic_algorithm_design.md](file:///d:/codespace/DvpDetect/DOCS/dynamic_algorithm_design.md): 详细描述动态算法库的设计方案
-- [DOCS/client_design.md](file:///d:/codespace/DvpDetect/DOCS/client_design.md): 详细描述客户端界面设计和信号订阅机制
-- [DOCS/algorithm_signal_mechanism.md](file:///d:/codespace/DvpDetect/DOCS/algorithm_signal_mechanism.md): 详细描述算法信号发布与订阅机制
+- [DOCS/communication_protocol.md](file:///d:/codespace/CFP/DOCS/communication_protocol.md): 详细描述系统中各个组件之间的通信协议
+- [DOCS/system_architecture.md](file:///d:/codespace/CFP/DOCS/system_architecture.md): 详细描述系统整体架构设计
+- [DOCS/multi_camera_interface.md](file:///d:/codespace/CFP/DOCS/multi_camera_interface.md): 详细描述多相机接口设计和实现方案
+- [DOCS/dynamic_algorithm_design.md](file:///d:/codespace/CFP/DOCS/dynamic_algorithm_design.md): 详细描述动态算法库的设计方案
+- [DOCS/client_design.md](file:///d:/codespace/CFP/DOCS/client_design.md): 详细描述客户端界面设计和信号订阅机制
+- [DOCS/algorithm_signal_mechanism.md](file:///d:/codespace/CFP/DOCS/algorithm_signal_mechanism.md): 详细描述算法信号发布与订阅机制
 
 ---
 
@@ -560,10 +613,13 @@ class GrpcTransport : public protocol::ITransportAdapter {
 - [ ] 实现自动化的相机热插拔与负载均衡
 - [ ] 增加 Web 界面远程监控支持
 - [ ] 实现动态算法库机制
+- [ ] 完善IK和MIND相机支持
+- [ ] 增加更多算法类型支持
 
 ## 依赖库
 
-- DVP SDK: 相机底层驱动
+- DVP SDK: DVP相机底层驱动
+- IKap SDK: IK相机底层驱动
 - Asio: 异步I/O库 (用于网络通信)
 - BS Thread Pool: 线程池管理
 - Concurrent Queue: 并发队列

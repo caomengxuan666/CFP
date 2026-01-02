@@ -33,7 +33,7 @@
 int main(int argc, char *argv[]) {
   QApplication a(argc, argv);
   a.setOrganizationName("Organization");
-  a.setApplicationName("DvpDetect");
+  a.setApplicationName("CFP");
 
   // 设置高DPI支持
   QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);

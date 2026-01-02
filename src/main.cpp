@@ -48,17 +48,29 @@
 #include "utils/get_local_ip.h"
 
 int main() {
-  asio::io_context io_context;
-  auto work_guard = asio::make_work_guard(io_context.get_executor());
-  std::thread asio_thread([&io_context]() { io_context.run(); });
+  // 1. 创建两个独立的 io_context
+  asio::io_context main_io_ctx;    // 用于主服务器（生产环境）
+  asio::io_context backup_io_ctx;  // 用于副服务器（调试环境）
+
+  auto main_guard = asio::make_work_guard(main_io_ctx.get_executor());
+  auto backup_guard = asio::make_work_guard(backup_io_ctx.get_executor());
+
+  // 2. 启动两个独立的事件循环线程
+  std::thread main_thread([&main_io_ctx]() { main_io_ctx.run(); });
+  std::thread backup_thread([&backup_io_ctx]() { backup_io_ctx.run(); });
 
   // 创建业务管理器（它会自动创建所有需要的会话）
   std::string local_ip = utils::get_local_ip();
-  business::BusinessManager business_mgr(io_context, local_ip);
+  business::BusinessManager business_mgr(
+      main_io_ctx, local_ip, "192.1.53.9",
+      "192.1.53.10");  // 主服务器和备份服务器IP
   business_mgr.start();
 
-  // 从 BusinessManager 获取 19300 会话
+  // 从 BusinessManager 获取主服务器和备份服务器的会话
   auto report_session = business_mgr.get_report_session();
+  auto backup_report_session =
+      business_mgr
+          .get_backup_report_session();  // 可能为空，如果未配置备份服务器
 
   // 初始化算法
   auto& config_manager = config::ConfigManager::instance();
@@ -92,10 +104,10 @@ int main() {
   business_mgr.set_start_callback(
       [start_camera](const std::string& roll_id) { start_camera(); });
 
-  // 特征数据回调
+  // 特征数据回调 - 同时发送到主服务器和备份服务器
   ImageSignalBus::instance().subscribe_feature(
-      "hole_features",
-      [report_session, &camera](const ImageSignalBus::FeatureData& data) {
+      "hole_features", [report_session, backup_report_session,
+                        &camera](const ImageSignalBus::FeatureData& data) {
         if (!report_session || !camera) {
           return;
         }
@@ -108,27 +120,56 @@ int main() {
           report.special_images = data.special_images;
           report.image_data = frame->data;
 
+          // 发送到主服务器
           report_session->async_send_features(report, [](std::error_code ec) {
             if (ec) {
-              std::cerr << "Feature send failed: " << ec.message() << "\n";
+              std::cerr << "Feature send to main server failed: "
+                        << ec.message() << "\n";
             }
           });
+
+          // 发送到备份服务器（如果存在）
+          if (backup_report_session) {
+            backup_report_session->async_send_features(
+                report, [](std::error_code ec) {
+                  if (ec) {
+                    std::cerr << "Feature send to backup server failed: "
+                              << ec.message() << "\n";
+                  }
+                });
+          }
         }
       });
 
   // 遥测数据由 BusinessManager 自动处理
   // 不需要手动创建 telemetry_thread
 
-  // 状态发送线程，发送给服务器
-  std::thread status_thread([report_session, &camera, &camera_running]() {
+  // 状态发送线程，同时发送给主服务器和备份服务器
+  std::thread status_thread([report_session, backup_report_session, &camera,
+                             &camera_running]() {
     while (true) {
       if (camera_running && camera) {
         auto status = camera->get_status();
+
+        // 发送到主服务器
         report_session->async_send_status(status, [](std::error_code ec) {
           if (ec) {
-            std::cerr << "Status send failed: " << ec.message() << "\n";
+            std::cerr << "Status send to main server failed: " << ec.message()
+                      << "\n";
           }
         });
+
+        // 发送到备份服务器（如果存在）
+        if (backup_report_session) {
+          backup_report_session->async_send_status(
+              status, [](std::error_code ec) {
+                if (ec) {
+                  std::cerr
+                      << "Status send to backup server failed: " << ec.message()
+                      << "\n";
+                }
+              });
+        }
       }
       std::this_thread::sleep_for(std::chrono::seconds(1));
     }
@@ -149,11 +190,17 @@ int main() {
   if (camera) {
     camera->stop();
   }
-  work_guard.reset();
-  io_context.stop();
+  main_guard.reset();
+  backup_guard.reset();
+  main_io_ctx.stop();
+  backup_io_ctx.stop();
 
-  if (asio_thread.joinable()) {
-    asio_thread.join();
+  if (main_thread.joinable()) {
+    main_thread.join();
+  }
+
+  if (backup_thread.joinable()) {
+    backup_thread.join();
   }
 
   if (status_thread.joinable()) {

@@ -19,7 +19,7 @@ ApplyPatch(
 # -------------------------------
 # 1. 核心：添加 OpenCV 按需查找的开关（默认关闭，仅手动开启时查找）
 # -------------------------------
-option(ENABLE_OPENCV "是否启用 OpenCV 功能（启用则查找，禁用则跳过）" OFF)
+option(ENABLE_OPENCV "是否启用 OpenCV 功能（启用则查找，禁用则跳过）" ON)
 # 缓存 OpenCV 路径（手动指定一次，后续无需重复查找）
 set(OpenCV_DIR "D:/vcpkg/installed/x64-windows/share/opencv4" CACHE PATH "OpenCV Config 目录（vcpkg 安装路径）")
 set(CMAKE_DISABLE_FIND_PACKAGE_WrapVulkanHeaders TRUE)
@@ -47,7 +47,7 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/third_party/asio/include)
 set(QT_DIR $ENV{QT_DIR})
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/find_Qt_Dependency.cmake) # 确保模块路径正确
 
-project(DvpDetectDemo)
+project(CFPDemo)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

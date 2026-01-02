@@ -28,6 +28,7 @@
 #include "protocol/AsioTcpTransport.hpp"
 
 #include <string>
+#include <memory>
 #include <vector>
 
 #include "asio.hpp"
@@ -61,9 +62,11 @@ void AsioTcpTransport::async_send(std::span<const uint8_t> data,
 
   auto buffer =
       std::make_shared<std::vector<uint8_t>>(data.begin(), data.end());
-  asio::async_write(socket_, asio::buffer(*buffer),
-                    [callback, buffer](const asio::error_code& ec,
-                                       std::size_t) { callback(ec); });
+  asio::async_write(
+      socket_, asio::buffer(*buffer),
+      [callback, buffer](const asio::error_code& ec, std::size_t) {
+        callback(ec);
+      });  // 异步发送数据
 }
 
 void AsioTcpTransport::async_receive(ReceiveCallback callback) {

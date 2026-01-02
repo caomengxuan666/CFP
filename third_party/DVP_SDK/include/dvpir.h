@@ -20,7 +20,7 @@
  *  SOFTWARE.
  *  
  *  - File: dvpir.h
- *  - Path: d:\codespace\DvpDetect\third_party\DVP_SDK\include\dvpir.h
+ *  - Path: d:\codespace\CFP\third_party\DVP_SDK\include\dvpir.h
  *  - CreationYear: 2025
  *  - Date: Sat Dec 20 2025
  *  - Username: Administrator

@@ -79,7 +79,7 @@ target_link_libraries(${TARGET_NAME} PRIVATE
     QtAntDesign
     DVP2::DVPCamera 
     DVP2::dvpir
-    DVPDETECT
+    CFP
 )
 
 # Windows特定链接

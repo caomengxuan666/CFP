@@ -161,7 +161,7 @@ struct GlobalConfig {
   static GlobalConfig load();
 
   static void saveDefaults(inicpp::IniManager &ini) {
-    ini.set("", "title", "DvpDetect", "应用标题");
+    ini.set("", "title", "CFP", "应用标题");
     HoleDetectionConfig::saveDefaults(ini);
   }
 };
@@ -212,7 +212,7 @@ inline GlobalConfig GlobalConfig::load() {
 
     GlobalConfig config;
     config.title = ini[""]["title"].String().empty()
-                       ? "DvpDetect"
+                       ? "CFP"
                        : ini[""]["title"].String();
     config.hole_detection = HoleDetectionConfig::load(ini);
     return config;

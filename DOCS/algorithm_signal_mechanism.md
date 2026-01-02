@@ -1,12 +1,12 @@
-# DvpDetect 算法信号机制设计文档
+# CFP 算法信号机制设计文档
 
 ## 文档概述
 
-本文档详细描述了 DvpDetect 系统中算法信号机制的设计方案，包括图像信号总线、算法接口规范、信号订阅与发布机制。
+本文档详细描述了 CFP 系统中算法信号机制的设计方案，包括图像信号总线、算法接口规范、信号订阅与发布机制。
 
 ## 设计背景
 
-在 DvpDetect 系统中，图像处理算法需要将处理结果（如中间图像、最终结果、统计数据等）传递给客户端界面或其他组件进行显示或处理。为了解耦算法实现与显示逻辑，系统采用了信号总线机制，实现算法与客户端之间的松耦合通信。
+在 CFP 系统中，图像处理算法需要将处理结果（如中间图像、最终结果、统计数据等）传递给客户端界面或其他组件进行显示或处理。为了解耦算法实现与显示逻辑，系统采用了信号总线机制，实现算法与客户端之间的松耦合通信。
 
 ## 核心组件
 
@@ -193,21 +193,21 @@ class AlgoAdapter : public FrameProcessor {
 
 ### 1. 信号声明阶段
 
-1. 算法实现 [get_signal_info()](file:///d:/codespace\DvpDetect\include\algo\AlgoBase.hpp#L66-L66) 方法，返回可提供的信号源列表
-2. 在 [AlgoAdapter](file:///d:/codespace\DvpDetect\include\algo\AlgoBase.hpp#L135-L149) 构造时调用算法的 [initialize()](file:///d:/codespace\DvpDetect\include\algo\AlgoBase.hpp#L42-L49) 方法
-3. [initialize()](file:///d:/codespace\DvpDetect\include\algo\AlgoBase.hpp#L42-L49) 方法将信号源注册到 [ImageSignalBus](file:///d:/codespace\DvpDetect\include\ImageSignalBus.hpp#L20-L88)
+1. 算法实现 [get_signal_info()](file:///d:/codespace\CFP\include\algo\AlgoBase.hpp#L66-L66) 方法，返回可提供的信号源列表
+2. 在 [AlgoAdapter](file:///d:/codespace\CFP\include\algo\AlgoBase.hpp#L135-L149) 构造时调用算法的 [initialize()](file:///d:/codespace\CFP\include\algo\AlgoBase.hpp#L42-L49) 方法
+3. [initialize()](file:///d:/codespace\CFP\include\algo\AlgoBase.hpp#L42-L49) 方法将信号源注册到 [ImageSignalBus](file:///d:/codespace\CFP\include\ImageSignalBus.hpp#L20-L88)
 
 ### 2. 信号订阅阶段
 
-1. 客户端或其它组件调用 [ImageSignalBus::subscribe()](file:///d:/codespace\DvpDetect\include\ImageSignalBus.hpp#L39-L39)
+1. 客户端或其它组件调用 [ImageSignalBus::subscribe()](file:///d:/codespace\CFP\include\ImageSignalBus.hpp#L39-L39)
 2. 提供信号名称和回调函数
-3. [ImageSignalBus](file:///d:/codespace\DvpDetect\include\ImageSignalBus.hpp#L20-L88) 将回调函数添加到订阅者列表
+3. [ImageSignalBus](file:///d:/codespace\CFP\include\ImageSignalBus.hpp#L20-L88) 将回调函数添加到订阅者列表
 
 ### 3. 信号发布阶段
 
-1. 算法在处理过程中调用 [emit_image()](file:///d:/codespace\DvpDetect\include\algo\AlgoBase.hpp#L95-L101) 方法
-2. [emit_image()](file:///d:/codespace\DvpDetect\include\algo\AlgoBase.hpp#L95-L101) 将图像数据发送到 [ImageSignalBus::emit()](file:///d:/codespace\DvpDetect\include\ImageSignalBus.hpp#L41-L41)
-3. [ImageSignalBus](file:///d:/codespace\DvpDetect\include\ImageSignalBus.hpp#L20-L88) 遍历订阅者列表并调用回调函数
+1. 算法在处理过程中调用 [emit_image()](file:///d:/codespace\CFP\include\algo\AlgoBase.hpp#L95-L101) 方法
+2. [emit_image()](file:///d:/codespace\CFP\include\algo\AlgoBase.hpp#L95-L101) 将图像数据发送到 [ImageSignalBus::emit()](file:///d:/codespace\CFP\include\ImageSignalBus.hpp#L41-L41)
+3. [ImageSignalBus](file:///d:/codespace\CFP\include\ImageSignalBus.hpp#L20-L88) 遍历订阅者列表并调用回调函数
 
 ## 线程安全设计
 
@@ -225,7 +225,7 @@ class AlgoAdapter : public FrameProcessor {
 
 ### 3. 算法处理线程安全
 
-- 算法 [process()](file:///d:/codespace\DvpDetect\include\algo\AlgoBase.hpp#L53-L53) 方法在工作线程执行
+- 算法 [process()](file:///d:/codespace\CFP\include\algo\AlgoBase.hpp#L53-L53) 方法在工作线程执行
 - 算法实现需保证线程安全（使用无状态设计或内部锁机制）
 
 ## 信号源类型

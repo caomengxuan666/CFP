@@ -1,8 +1,8 @@
-# DvpDetect 多相机接口设计文档
+# CFP 多相机接口设计文档
 
 ## 文档概述
 
-本文档详细描述了 DvpDetect 系统中多相机接口的设计方案。虽然当前系统运行在单机单相机模式下，但已预留了完整的多相机接口，为未来扩展做好准备。
+本文档详细描述了 CFP 系统中多相机接口的设计方案。虽然当前系统运行在单机单相机模式下，但已预留了完整的多相机接口，为未来扩展做好准备。
 
 ## 设计背景
 
@@ -116,20 +116,20 @@ public:
 
 #### MultiCameraCoordinator 实现
 
-- [MultiCameraCoordinator](file:///d:/codespace/DvpDetect/include/MultiCameraCoordinator.hpp#L1-L33) 类已定义基本接口
+- [MultiCameraCoordinator](file:///d:/codespace/CFP/include/MultiCameraCoordinator.hpp#L1-L33) 类已定义基本接口
 - 支持添加和管理多个相机实例
 - 提供基本的同步机制
 
 #### FrameProcessor 扩展
 
-- [FrameProcessor](file:///d:/codespace/DvpDetect/include/FrameProcessor.hpp#L1-L138) 支持多相机帧处理
+- [FrameProcessor](file:///d:/codespace/CFP/include/cameras/FrameProcessor.hpp#L1-L138) 支持多相机帧处理
 - 定义了 `MultiCameraFusionProcessor` 扩展类
 - 预留图像拼接、去重、对齐接口
 
 #### Camera 管理增强
 
-- [CameraManager](file:///d:/codespace/DvpDetect/include/cameras/CameraManager.hpp#L1-L21) 支持多相机管理
-- [CameraFactory](file:///d:/codespace/DvpDetect/include/cameras/CameraFactory.hpp#L1-L16) 支持不同类型相机创建
+- [CameraManager](file:///d:/codespace/CFP/include/cameras/CameraManager.hpp#L1-L21) 支持多相机管理
+- [CameraFactory](file:///d:/codespace/CFP/include/cameras/CameraFactory.hpp#L1-L16) 支持不同类型相机创建
 
 ### 待完善功能
 
@@ -153,7 +153,7 @@ public:
 
 ### CameraConfig 扩展
 
-- 当前 [CameraConfig](file:///d:/codespace/DvpDetect/include/config/CameraConfig.hpp#L1-L28) 已预留多相机配置字段
+- 当前 [CameraConfig](file:///d:/codespace/CFP/include/config/CameraConfig.hpp#L1-L28) 已预留多相机配置字段
 - 支持为每个相机配置不同的 ROI、曝光等参数
 - 配置同步机制确保多相机参数一致性
 
@@ -183,7 +183,7 @@ public:
 ### 步骤
 
 1. 修改构建配置启用多相机支持
-2. 配置 [MultiCameraCoordinator](file:///d:/codespace/DvpDetect/include/MultiCameraCoordinator.hpp#L1-L33) 实例
+2. 配置 [MultiCameraCoordinator](file:///d:/codespace/CFP/include/MultiCameraCoordinator.hpp#L1-L33) 实例
 3. 初始化多个相机实例
 4. 配置同步参数
 5. 启动多相机捕获
@@ -242,7 +242,7 @@ coordinator->startAllCameras();
 
 ### 相机类型支持
 
-- 通过 [CameraFactory](file:///d:/codespace/DvpDetect/include/cameras/CameraFactory.hpp#L1-L16) 支持不同类型相机
+- 通过 [CameraFactory](file:///d:/codespace/CFP/include/cameras/CameraFactory.hpp#L1-L16) 支持不同类型相机
 - 插件化相机驱动，易于扩展
 
 ### 算法扩展

@@ -1,12 +1,12 @@
-# DvpDetect 通信协议详细设计文档
+# CFP 通信协议详细设计文档
 
 ## 文档概述
 
-本文档详细描述了 DvpDetect 系统中各个组件之间的通信协议，包括 TCP 通信协议和 Redis PUB/SUB 通信协议。
+本文档详细描述了 CFP 系统中各个组件之间的通信协议，包括 TCP 通信协议和 Redis PUB/SUB 通信协议。
 
-## 当前架构 - 单机单相机模式
+## 当前架构 - 双服务器冗余模式
 
-在当前部署中，系统采用单机单相机模式，即一台电脑控制一个相机。这种模式具有良好的稳定性和实时性，满足大多数现场部署需求。
+在当前部署中，系统采用双服务器冗余架构，即一台前端机同时连接主服务器和副服务器。这种模式具有高可用性和调试支持，满足生产环境的稳定性需求。
 
 ### TCP 通信协议
 
@@ -27,8 +27,40 @@
 > 说明：
 >
 > - `101` 代表主控服务器节点，它既是 TCP 服务端（监听 7000 和 19800 端口），也是 TCP 客户端（连接到 19700 端口）
-> - 所有前端机通过 TCP 客户端主动连接到服务器
+> - 所有前端机通过 TCP 客户端主动连接到主服务器和副服务器
 > - 服务器监听多个端口，分别用于不同类型的指令传输
+
+### 双服务器架构设计
+
+#### 1. 主服务器与副服务器角色
+
+- **主服务器**: 用于生产环境，必须稳定、低延迟
+- **副服务器**: 用于调试（如大模型分析），不能影响主服务器的性能
+- **故障隔离**: 主服务器和副服务器使用独立的 [asio::io_context](file:///d:/codespace/CFP/third_party/asio/include/asio/io_context.hpp#L61-L64) 确保故障隔离
+
+#### 2. 会话管理
+
+在 [BusinessManager](file:///d:/codespace/CFP/include/business/BusinessManager.hpp#L32-L114) 中，系统维护两组独立的协议会话：
+
+- **主协议会话**:
+  - [report_session_](file:///d:/codespace/CFP/include/business/BusinessManager.hpp#L98-L98): 连接到主服务器的 19300 端口（特征数据上报）
+  - [telemetry_session_](file:///d:/codespace/CFP/include/business/BusinessManager.hpp#L99-L99): 连接到主服务器的 19700 端口（遥测数据上报）
+
+- **备份协议会话**:
+  - [backup_report_session_](file:///d:/codespace/CFP/include/business/BusinessManager.hpp#L102-L102): 连接到副服务器的 19300 端口（特征数据备份）
+  - [backup_telemetry_session_](file:///d:/codespace/CFP/include/business/BusinessManager.hpp#L103-L103): 连接到副服务器的 19700 端口（遥测数据备份）
+
+#### 3. 数据发送策略
+
+- **主服务器策略**: 必须成功，失败需重试/告警
+- **副服务器策略**: 尽力而为，失败可忽略，绝不阻塞主流程
+- **并行发送**: 数据同时异步发送到两个服务器，避免串行阻塞影响实时性
+
+#### 4. 独立网络堆栈
+
+- **main_io_ctx_**: 用于主服务器（生产环境）
+- **backup_io_ctx_**: 用于副服务器（调试环境）
+- 彻底隔离网络堆栈，避免副服务器影响主线程
 
 ### Redis 通信协议
 
@@ -59,7 +91,7 @@
 在多相机模式下，系统架构将简化为：
 
 1. **本地通信**: 相机之间通过共享内存或队列进行通信
-2. **统一控制**: 通过 [MultiCameraCoordinator](file:///d:/codespace/DvpDetect/include/MultiCameraCoordinator.hpp#L1-L33) 统一管理多个相机
+2. **统一控制**: 通过 [MultiCameraCoordinator](file:///d:/codespace/CFP/include/MultiCameraCoordinator.hpp#L1-L33) 统一管理多个相机
 3. **集中处理**: 所有图像数据在本地进行处理和融合
 
 ## 通信协议实现
@@ -68,16 +100,16 @@
 
 TCP 通信协议由以下组件实现：
 
-- [AsioTcpTransport](file:///d:/codespace/DvpDetect/include/protocol/AsioTcpTransport.hpp#L1-L35): 基于 ASIO 库的 TCP 传输层
-- [ProtocolSession](file:///d:/codespace/DvpDetect/include/protocol/ProtocolSession.hpp#L1-L31): 通信会话管理
-- [TransportAdapter](file:///d:/codespace/DvpDetect/include/protocol/TransportAdapter.hpp#L1-L17): 传输层适配器
+- [AsioTcpTransport](file:///d:/codespace/CFP/include/protocol/AsioTcpTransport.hpp#L1-L35): 基于 ASIO 库的 TCP 传输层
+- [ProtocolSession](file:///d:/codespace/CFP/include/protocol/ProtocolSession.hpp#L1-L31): 通信会话管理
+- [TransportAdapter](file:///d:/codespace/CFP/include/protocol/TransportAdapter.hpp#L1-L17): 传输层适配器
 
 ### Redis 通信实现
 
 Redis 通信协议由以下组件实现：
 
-- [IRedisClient](file:///d:/codespace/DvpDetect/include/redis/IRedisClient.hpp#L1-L9): Redis 客户端接口
-- [RedisClient](file:///d:/codespace/DvpDetect/include/redis/RedisClient.hpp#L1-L17): Redis 客户端具体实现
+- [IRedisClient](file:///d:/codespace/CFP/include/redis/IRedisClient.hpp#L1-L9): Redis 客户端接口
+- [RedisClient](file:///d:/codespace/CFP/include/redis/RedisClient.hpp#L1-L17): Redis 客户端具体实现
 - 分布式状态同步模块
 
 ## 状态机设计

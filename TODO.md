@@ -74,7 +74,7 @@
 
 ### 2. 图像处理相关
 
-- [ ] **[include/FrameProcessor.hpp]** - 第42行："TODO 未来需要用union来存储来自不同相机的元信息"，需要改进CapturedFrame结构以支持不同相机的元信息
+- [ ] **[include/cameras/FrameProcessor.hpp]** - 第42行："TODO 未来需要用union来存储来自不同相机的元信息"，需要改进CapturedFrame结构以支持不同相机的元信息
 
 - [ ] **[src/FrameProcessor.hpp]** - 第137行："TODO: 实现图像拼接、去重、对齐"，在MultiCameraFusionProcessor中实现图像融合功能。目前来说的话暂时不用设计融合策略，直接使用单相机。未来即使使用
 融合策略，我们也是通过设置ROI的方式来达成这个目的。
@@ -141,8 +141,8 @@
 ### 第一阶段：Redis 客户端实现
 
 - [ ] **创建 Redis 客户端类**
-  - [ ] 创建 [include/redis/RedisClient.hpp](file:///d:/codespace/DvpDetect/include/protocol/messages.hpp#L1-L38) 头文件
-  - [ ] 创建 [src/redis/RedisClient.cpp](file:///d:/codespace/DvpDetect/src/protocol/LegacyCodec.cpp#L1-L111) 实现文件
+  - [ ] 创建 [include/redis/RedisClient.hpp](file:///d:/codespace/CFP/include/protocol/messages.hpp#L1-L38) 头文件
+  - [ ] 创建 [src/redis/RedisClient.cpp](file:///d:/codespace/CFP/src/protocol/LegacyCodec.cpp#L1-L111) 实现文件
   - [ ] 实现基础连接功能
   - [ ] 实现 PUBLISH 操作
   - [ ] 实现 SUBSCRIBE 操作
@@ -173,7 +173,7 @@
 
 - [ ] **与现有系统集成**
   - [ ] 将 Redis 通信模块集成到现有相机管理系统中
-  - [ ] 确保与 [DvpEventManager](file:///d:/codespace/DvpDetect/include/DvpEventManager.hpp#L15-L28) 的兼容性
+  - [ ] 确保与 [DvpEventManager](file:///d:/codespace/CFP/include/cameras/Dvp/DvpEventManager.hpp#L15-L28) 的兼容性
   - [ ] 保证与图像采集和处理模块的协调
 
 - [ ] **全面测试**
@@ -204,8 +204,8 @@
 ## 注意事项
 
 - [ ] **确保与现有协议栈兼容**
-  - [ ] 与 [ProtocolSession](file:///d:/codespace/DvpDetect/include/protocol/ProtocolSession.hpp#L18-L39) 类的兼容性
-  - [ ] 与 [AsioTcpTransport](file:///d:/codespace/DvpDetect/include/protocol/AsioTcpTransport.hpp#L14-L24) 的协调
+  - [ ] 与 [ProtocolSession](file:///d:/codespace/CFP/include/protocol/ProtocolSession.hpp#L18-L39) 类的兼容性
+  - [ ] 与 [AsioTcpTransport](file:///d:/codespace/CFP/include/protocol/AsioTcpTransport.hpp#L14-L24) 的协调
 
 - [ ] **性能考虑**
   - [ ] 评估 Redis 通信对系统性能的影响

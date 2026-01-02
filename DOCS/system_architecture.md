@@ -1,16 +1,16 @@
-# DvpDetect 系统架构设计文档
+# CFP 系统架构设计文档
 
 ## 文档概述
 
-本文档详细描述了 DvpDetect 系统的整体架构设计，包括模块划分、组件关系、数据流向和关键接口。文档旨在为开发者提供系统架构的全面理解，以便进行开发、维护和扩展。
+本文档详细描述了 CFP 系统的整体架构设计，包括模块划分、组件关系、数据流向和关键接口。文档旨在为开发者提供系统架构的全面理解，以便进行开发、维护和扩展。
 
 ## 系统架构概览
 
-DvpDetect 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP 相机控制、图像采集与处理。系统采用分层架构设计，具有良好的模块化和可扩展性。
+CFP 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP/IK/MIND 相机控制、图像采集与处理。系统采用分层架构设计，具有良好的模块化和可扩展性。
 
 ```plain text
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                         DvpDetect Architecture                              │
+│                         CFP Architecture                              │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Client Layer (UI)                                                          │
 │  ┌─────────────────────────────────────────────────────────────────────────┐│
@@ -53,6 +53,43 @@ DvpDetect 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP
 │  └─────────────────────────────────────────────────────────────────────────┘│
 ```
 
+## 双服务器冗余架构设计
+
+### 1. 架构概述
+
+为了满足生产环境的高可用性和调试需求，系统实现了双服务器冗余架构：
+
+- **主服务器**: 用于生产环境，必须稳定、低延迟
+- **副服务器**: 用于调试（如大模型分析），不能影响主服务器的性能
+- **双协议会话**: 主服务器和副服务器分别维护独立的协议会话
+- **独立网络堆栈**: 主服务器和副服务器使用独立的 [asio::io_context](file:///d:/codespace/CFP/third_party/asio/include/asio/io_context.hpp#L61-L64) 确保故障隔离
+
+### 2. BusinessManager 中的双会话管理
+
+在 [BusinessManager](file:///d:/codespace/CFP/include/business/BusinessManager.hpp#L32-L114) 类中，实现了主服务器和副服务器的会话管理：
+
+```
+// 主协议会话
+std::shared_ptr<protocol::ProtocolSession> report_session_;     // 19300 主服务器
+std::shared_ptr<protocol::ProtocolSession> telemetry_session_;  // 19700 主服务器
+
+// 备份协议会话
+std::shared_ptr<protocol::ProtocolSession> backup_report_session_;     // 19300 备份服务器
+std::shared_ptr<protocol::ProtocolSession> backup_telemetry_session_;  // 19700 备份服务器
+```
+
+### 3. 数据发送策略
+
+- **主服务器**: 必须成功，失败需重试/告警
+- **副服务器**: 尽力而为，失败可忽略，绝不阻塞主流程
+- **并行发送**: 数据同时异步发送到两个服务器，避免串行阻塞影响实时性
+
+### 4. 独立的 I/O 上下文
+
+- **main_io_ctx_**: 用于主服务器（生产环境）
+- **backup_io_ctx_**: 用于副服务器（调试环境）
+- 彻底隔离网络堆栈，避免副服务器影响主线程
+
 ## 模块详细设计
 
 ### 1. 客户端层 (Client Layer)
@@ -64,7 +101,7 @@ DvpDetect 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP
   - 界面布局管理
   - 页面导航控制
   - 相机管理接口调用
-- **依赖**: [DvpCameraView](file:///d:/codespace/DvpDetect/src/client/DvpCameraView.h#L10-L34), [DvpConfigModel](file:///d:/codespace/DvpDetect/src/client/DvpConfigModel.h#L14-L29)
+- **依赖**: [DvpCameraView](file:///d:/codespace/CFP/src/client/DvpCameraView.h#L10-L34), [DvpConfigModel](file:///d:/codespace/CFP/src/client/DvpConfigModel.h#L14-L29)
 
 #### 1.2 DvpCameraView
 
@@ -73,7 +110,7 @@ DvpDetect 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP
   - 视频帧显示
   - 处理结果可视化
   - 用户交互响应
-- **依赖**: [ImageSignalBus](file:///d:/codespace/DvpDetect/include/ImageSignalBus.hpp#L1-L45)
+- **依赖**: [ImageSignalBus](file:///d:/codespace/CFP/include/cameras/ImageSignalBus.hpp#L1-L45)
 
 #### 1.3 DvpConfigModel
 
@@ -82,7 +119,7 @@ DvpDetect 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP
   - 参数存储和更新
   - 配置验证
   - 参数持久化
-- **依赖**: [AlogoParams](file:///d:/codespace/DvpDetect/include/config/AlogoParams.hpp#L1-L15), [CameraConfig](file:///d:/codespace/DvpDetect/include/config/CameraConfig.hpp#L1-L28)
+- **依赖**: [AlogoParams](file:///d:/codespace/CFP/include/config/AlogoParams.hpp#L1-L15), [CameraConfig](file:///d:/codespace/CFP/include/config/CameraConfig.hpp#L1-L28)
 
 ### 2. 通信协议层 (Communication & Protocol Layer)
 
@@ -93,7 +130,7 @@ DvpDetect 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP
   - 会话建立和销毁
   - 数据收发处理
   - 协议编解码
-- **依赖**: [AsioTcpTransport](file:///d:/codespace/DvpDetect/include/protocol/AsioTcpTransport.hpp#L1-L35), [LegacyCodec](file:///d:/codespace/DvpDetect/include/protocol/LegacyCodec.hpp#L1-L26)
+- **依赖**: [AsioTcpTransport](file:///d:/codespace/CFP/include/protocol/AsioTcpTransport.hpp#L1-L35), [LegacyCodec](file:///d:/codespace/CFP/include/protocol/LegacyCodec.hpp#L1-L26)
 
 #### 2.2 AsioTcpTransport
 
@@ -139,7 +176,7 @@ DvpDetect 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP
   - 相机调度
   - 数据融合
   - 负载均衡
-- **依赖**: [FrameProcessor](file:///d:/codespace/DvpDetect/include/FrameProcessor.hpp#L1-L138)
+- **依赖**: [FrameProcessor](file:///d:/codespace/CFP/include/cameras/FrameProcessor.hpp#L1-L138)
 
 #### 4.2 FrameProcessor
 
@@ -148,7 +185,7 @@ DvpDetect 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP
   - 图像预处理
   - 算法执行
   - 结果输出
-- **依赖**: [HoleDetection](file:///d:/codespace/DvpDetect/include/algo/HoleDetection.hpp#L1-L28)
+- **依赖**: [HoleDetection](file:///d:/codespace/CFP/include/algo/HoleDetection.hpp#L1-L28)
 
 ### 5. 应用层 (Application Layer)
 
@@ -159,7 +196,7 @@ DvpDetect 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP
   - 相机参数配置
   - 相机实例创建
   - 相机功能初始化
-- **依赖**: [DvpConfig](file:///d:/codespace/DvpDetect/include/DvpConfig.hpp#L1-L35)
+- **依赖**: [DvpConfig](file:///d:/codespace/CFP/include/cameras/Dvp/DvpConfig.hpp#L1-L35)
 
 #### 5.2 DvpCameraCapture
 
@@ -168,7 +205,7 @@ DvpDetect 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP
   - 图像捕获
   - 图像队列管理
   - 捕获状态监控
-- **依赖**: [DvpCameraBuilder](file:///d:/codespace/DvpDetect/include/DvpCameraBuilder.hpp#L1-L25)
+- **依赖**: [DvpCameraBuilder](file:///d:/codespace/CFP/include/cameras/Dvp/DvpCameraBuilder.hpp#L1-L25)
 
 #### 5.3 DvpEventManager
 
@@ -177,7 +214,7 @@ DvpDetect 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP
   - 事件监听
   - 事件分发
   - 事件处理
-- **依赖**: [ImageSignalBus](file:///d:/codespace/DvpDetect/include/ImageSignalBus.hpp#L1-L45)
+- **依赖**: [ImageSignalBus](file:///d:/codespace/CFP/include/cameras/ImageSignalBus.hpp#L1-L45)
 
 ### 6. 相机管理层 (Camera Management Layer)
 
@@ -188,7 +225,7 @@ DvpDetect 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP
   - 不同类型相机的创建
   - 相机类型注册
   - 相机实例管理
-- **依赖**: [CameraManager](file:///d:/codespace/DvpDetect/include/cameras/CameraManager.hpp#L1-L21)
+- **依赖**: [CameraManager](file:///d:/codespace/CFP/include/cameras/CameraManager.hpp#L1-L21)
 
 #### 6.2 CameraManager
 
@@ -197,7 +234,7 @@ DvpDetect 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP
   - 相机生命周期管理
   - 相机配置保存/加载
   - 相机状态监控
-- **依赖**: [CameraConfig](file:///d:/codespace/DvpDetect/include/config/CameraConfig.hpp#L1-L28)
+- **依赖**: [CameraConfig](file:///d:/codespace/CFP/include/config/CameraConfig.hpp#L1-L28)
 
 ### 7. 配置层 (Configuration Layer)
 
@@ -208,7 +245,7 @@ DvpDetect 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP
   - 系统参数存储
   - 配置加载/保存
   - 配置变更通知
-- **依赖**: [ConfigManager](file:///d:/codespace/DvpDetect/include/config/ConfigManager.hpp#L1-L16)
+- **依赖**: [ConfigManager](file:///d:/codespace/CFP/include/config/ConfigManager.hpp#L1-L16)
 
 #### 7.2 ConfigManager
 
@@ -217,7 +254,7 @@ DvpDetect 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP
   - 配置文件读写
   - 配置验证
   - 配置变更事件
-- **依赖**: [ConfigObserver](file:///d:/codespace/DvpDetect/include/config/ConfigObserver.hpp#L1-L12)
+- **依赖**: [ConfigObserver](file:///d:/codespace/CFP/include/config/ConfigObserver.hpp#L1-L12)
 
 ### 8. 算法层 (Algorithm Layer)
 
@@ -228,26 +265,27 @@ DvpDetect 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP
   - 图像处理
   - 特征提取
   - 孔洞识别
-- **依赖**: [AlgoBase](file:///d:/codespace/DvpDetect/include/algo/AlgoBase.hpp#L1-L16), OpenCV
+- **依赖**: [AlgoBase](file:///d:/codespace/CFP/include/algo/AlgoBase.hpp#L1-L16), OpenCV
 
 ## 数据流向
 
 ### 图像数据流向
 
 ```
-物理相机 → [DvpCameraCapture](file:///d:/codespace/DvpDetect/include/DvpCameraCapture.hpp#L1-L58) → [ImageSignalBus](file:///d:/codespace/DvpDetect/include/ImageSignalBus.hpp#L1-L45) → [FrameProcessor](file:///d:/codespace/DvpDetect/include/FrameProcessor.hpp#L1-L138) → [HoleDetection](file:///d:/codespace/DvpDetect/include/algo/HoleDetection.hpp#L1-L28) → [DvpCameraView](file:///d:/codespace/DvpDetect/src/client/DvpCameraView.h#L10-L34)
+物理相机 → [DvpCameraCapture](file:///d:/codespace/CFP/include/cameras/Dvp/DvpCameraCapture.hpp#L1-L58) → [ImageSignalBus](file:///d:/codespace/CFP/include/cameras/ImageSignalBus.hpp#L1-L45) → [FrameProcessor](file:///d:/codespace/CFP/include/cameras/FrameProcessor.hpp#L1-L138) → [HoleDetection](file:///d:/codespace/CFP/include/algo/HoleDetection.hpp#L1-L28) → [DvpCameraView](file:///d:/codespace/CFP/src/client/DvpCameraView.h#L10-L34)
 ```
 
 ### 控制信号流向
 
-```PlainText
-[DvpMainWindow](file:///d:/codespace/DvpDetect/src/client/DvpMainWindow.h#L15-L42) → [DvpCameraManager](file:///d:/codespace/DvpDetect/include/DvpCameraManager.hpp#L1-L21) → [DvpCameraCapture](file:///d:/codespace/DvpDetect/include/DvpCameraCapture.hpp#L1-L58) → 物理相机
+``PlainText
+[DvpMainWindow](file:///d:/codespace/CFP/src/client/DvpMainWindow.h#L15-L42) → [DvpCameraManager](file:///d:/codespace/CFP/include/DvpCameraManager.hpp#L1-L21) → [DvpCameraCapture](file:///d:/codespace/CFP/include/cameras/Dvp/DvpCameraCapture.hpp#L1-L58) → 物理相机
+
 ```
 
 ### 配置数据流向
 
-```PlainText
-[DvpConfigModel](file:///d:/codespace/DvpDetect/src/client/DvpConfigModel.h#L14-L29) → [DvpConfig](file:///d:/codespace/DvpDetect/include/DvpConfig.hpp#L1-L35) → [DvpCameraBuilder](file:///d:/codespace/DvpDetect/include/DvpCameraBuilder.hpp#L1-L25) → 物理相机
+``PlainText
+[DvpConfigModel](file:///d:/codespace/CFP/src/client/DvpConfigModel.h#L14-L29) → [DvpConfig](file:///d:/codespace/CFP/include/cameras/Dvp/DvpConfig.hpp#L1-L35) → [DvpCameraBuilder](file:///d:/codespace/CFP/include/cameras/Dvp/DvpCameraBuilder.hpp#L1-L25) → 物理相机
 ```
 
 ## 关键接口
@@ -271,8 +309,8 @@ DvpDetect 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP
 
 ### 多相机支持
 
-- 通过 [MultiCameraCoordinator](file:///d:/codespace/DvpDetect/include/MultiCameraCoordinator.hpp#L1-L33) 实现多相机协调
-- 通过 [CameraFactory](file:///d:/codespace/DvpDetect/include/cameras/CameraFactory.hpp#L1-L16) 支持不同类型相机的扩展
+- 通过 [MultiCameraCoordinator](file:///d:/codespace/CFP/include/MultiCameraCoordinator.hpp#L1-L33) 实现多相机协调
+- 通过 [CameraFactory](file:///d:/codespace/CFP/include/cameras/CameraFactory.hpp#L1-L16) 支持不同类型相机的扩展
 
 ### 算法扩展
 

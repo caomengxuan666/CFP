@@ -1,8 +1,8 @@
-# DvpDetect 客户端设计文档
+# CFP 客户端设计文档
 
 ## 文档概述
 
-本文档详细描述了 DvpDetect 系统中客户端的设计方案，包括用户界面、信号订阅机制以及与图像算法的交互方式。
+本文档详细描述了 CFP 系统中客户端的设计方案，包括用户界面、信号订阅机制以及与图像算法的交互方式。
 
 ## 客户端架构
 
@@ -35,7 +35,7 @@ DvpMainWindow
 
 ### ImageSignalBus 信号总线
 
-客户端通过 [ImageSignalBus](file:///d:/codespace\DvpDetect\include\ImageSignalBus.hpp#L20-L88) 订阅图像处理结果，实现 UI 与算法的解耦。
+客户端通过 [ImageSignalBus](file:///d:/codespace\CFP\include\ImageSignalBus.hpp#L20-L88) 订阅图像处理结果，实现 UI 与算法的解耦。
 
 #### 订阅接口
 
@@ -54,7 +54,7 @@ class ImageSignalBus {
 
 ### 客户端订阅流程
 
-1. **信号声明**: 算法类在 [get_signal_info()](file:///d:/codespace\DvpDetect\include\algo\AlgoBase.hpp#L66-L66) 中声明可提供的信号源
+1. **信号声明**: 算法类在 [get_signal_info()](file:///d:/codespace\CFP\include\algo\AlgoBase.hpp#L66-L66) 中声明可提供的信号源
 2. **信号订阅**: 客户端在 UI 组件中订阅特定信号
 3. **图像显示**: 通过回调函数接收图像并更新 UI
 
@@ -76,7 +76,7 @@ signalBus.subscribe("processed_frame", [this](const cv::Mat& img) {
 
 ### 信号源管理
 
-每个算法类通过 [get_signal_info()](file:///d:/codespace\DvpDetect\include\algo\AlgoBase.hpp#L66-L66) 方法声明可提供的信号源：
+每个算法类通过 [get_signal_info()](file:///d:/codespace\CFP\include\algo\AlgoBase.hpp#L66-L66) 方法声明可提供的信号源：
 
 ```cpp
 std::vector<AlgoSignalInfo> get_signal_info() const override {
@@ -91,7 +91,7 @@ std::vector<AlgoSignalInfo> get_signal_info() const override {
 
 ### 信号发布
 
-算法内部通过 [emit_image()](file:///d:/codespace\DvpDetect\include\algo\AlgoBase.hpp#L95-L101) 方法发布处理结果：
+算法内部通过 [emit_image()](file:///d:/codespace\CFP\include\algo\AlgoBase.hpp#L95-L101) 方法发布处理结果：
 
 ```cpp
 // 在算法处理流程中发布图像
@@ -184,7 +184,7 @@ private:
 
 ### 信号总线线程安全
 
-- [ImageSignalBus](file:///d:/codespace\DvpDetect\include\ImageSignalBus.hpp#L20-L88) 内部使用线程安全的容器和锁机制
+- [ImageSignalBus](file:///d:/codespace\CFP\include\ImageSignalBus.hpp#L20-L88) 内部使用线程安全的容器和锁机制
 - 支持多线程并发访问
 - 图像数据自动深拷贝，确保生命周期安全
 
