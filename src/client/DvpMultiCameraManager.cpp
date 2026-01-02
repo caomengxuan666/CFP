@@ -1,5 +1,5 @@
 /*
- *  Copyright © 2025 [caomengxuan666]
+ *  Copyright © 2025-2026 [caomengxuan666]
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
  *  of this software and associated documentation files (the “Software”), to
@@ -21,7 +21,7 @@
  *
  *  - File: DvpMultiCameraManager.cpp
  *  - Username: Administrator
- *  - CopyrightYear: 2025
+ *  - CopyrightYear: 2025-2026
  */
 
 #include "DvpMultiCameraManager.h"
@@ -32,9 +32,9 @@
 #include <QJsonObject>
 
 // 添加缺失的包含文件
-#include "DvpCameraCapture.hpp"
-#include "DvpConfig.hpp"
-#include "FrameProcessor.hpp"
+#include "cameras/Dvp/DvpCameraCapture.hpp"
+#include "cameras/Dvp/DvpConfig.hpp"
+#include "cameras/FrameProcessor.hpp"
 
 DvpMultiCameraManager::DvpMultiCameraManager(QObject* parent)
     : QObject(parent) {}

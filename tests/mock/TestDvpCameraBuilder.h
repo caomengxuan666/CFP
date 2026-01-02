@@ -1,7 +1,7 @@
 // tests/mock/TestDvpCameraBuilder.h
 #include "DVPCameraMock.hpp"
-#include "DvpCameraBuilder.hpp"
 #include "TestDvpCamera.h"
+#include "cameras/Dvp/DvpCameraBuilder.hpp"
 
 class TestDvpCameraBuilder : public DvpCameraBuilder {
  public:

@@ -1,5 +1,5 @@
 /*
- *  Copyright © 2025 [caomengxuan666]
+ *  Copyright © 2025-2026 [caomengxuan666]
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
  *  of this software and associated documentation files (the “Software”), to
@@ -21,7 +21,7 @@
  *
  *  - File: DvpConfigModel.h
  *  - Username: Administrator
- *  - CopyrightYear: 2025
+ *  - CopyrightYear: 2025-2026
  */
 
 #ifndef DVPCONFIGMODEL_H
@@ -31,7 +31,7 @@
 #include <QIcon>
 #include <QStringList>
 
-#include "DvpConfig.hpp"
+#include "cameras/Dvp/DvpConfig.hpp"
 
 class DvpConfigModel : public QAbstractItemModel {
   Q_OBJECT

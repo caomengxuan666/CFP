@@ -1,5 +1,5 @@
 /*
- *  Copyright © 2025 [caomengxuan666]
+ *  Copyright © 2025-2026 [caomengxuan666]
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
  *  of this software and associated documentation files (the “Software”), to
@@ -21,7 +21,7 @@
  *
  *  - File: DvpMultiCameraManager.h
  *  - Username: Administrator
- *  - CopyrightYear: 2025
+ *  - CopyrightYear: 2025-2026
  */
 
 #ifndef DVP_MULTICAMERA_MANAGER_H
@@ -32,10 +32,10 @@
 #include <memory>
 #include <unordered_map>
 
-#include "DvpConfig.hpp"
+#include "cameras/Dvp/DvpConfig.hpp"
 // Forward declarations
 class DvpCameraCapture;
-struct DvpConfig;  // 使用struct关键字并确保与实际定义一致
+struct DvpConfig;
 class FrameProcessor;
 
 /**

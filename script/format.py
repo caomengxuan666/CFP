@@ -4,7 +4,7 @@ import subprocess
 import multiprocessing
 import fnmatch
 from pathlib import Path
-from update_command import remove_duplicate_copyright_comments
+from update_commant import remove_duplicate_copyright_comments
 
 def find_clang_format():
     """Find clang-format executable"""

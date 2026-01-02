@@ -2,9 +2,9 @@
 #pragma once
 #include <memory>
 
-#include "DvpCameraCapture.hpp"
-#include "DvpConfig.hpp"
 #include "IDVPCamera.h"
+#include "cameras/Dvp/DvpCameraCapture.hpp"
+#include "cameras/Dvp/DvpConfig.hpp"
 
 class TestDvpCamera : public DvpCameraCapture {
  public:

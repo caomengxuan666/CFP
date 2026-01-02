@@ -4,9 +4,9 @@
 #include <memory>
 
 #include "DVPCamera.h"
-#include "DvpCameraCapture.hpp"
-#include "DvpConfig.hpp"
 #include "IDVPCamera.h"
+#include "cameras/Dvp/DvpCameraCapture.hpp"
+#include "cameras/Dvp/DvpConfig.hpp"
 
 // 模拟一下dvpRegion结构
 struct MockDvpRegion {

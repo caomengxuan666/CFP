@@ -1,5 +1,5 @@
 /*
- *  Copyright © 2025 [caomengxuan666]
+ *  Copyright © 2025-2026 [caomengxuan666]
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
  *  of this software and associated documentation files (the “Software”), to
@@ -21,7 +21,7 @@
  *
  *  - File: messages.hpp
  *  - Username: Administrator
- *  - CopyrightYear: 2025
+ *  - CopyrightYear: 2025-2026
  */
 
 // Copyright (c) 2025 caomengxuan666
@@ -71,6 +71,7 @@ struct FrontendStatus {
   bool image_anomaly = false;  // index6: 图像异常
 
   /// 转换为 32 位状态整数（按协议要求）
+  // NOLINTBEGIN
   uint32_t to_uint32() const {
     uint32_t status = 0;
     if (self_check) status |= (1U << 1);
@@ -79,6 +80,14 @@ struct FrontendStatus {
     if (image_anomaly) status |= (1U << 6);
     return status;
   }
+  // NOLINTEND
+};
+
+struct SegmentationParams {
+  int32_t upper_surface_id;                 // 上表面编号
+  std::array<float, 4> upper_large_params;  // 上表面大图参数
+  int32_t lower_surface_id;                 // 下表面编号
+  std::array<float, 4> lower_large_params;  // 下表面大图参数
 };
 
 }  // namespace protocol

@@ -25,11 +25,17 @@ if(MSVC)
     )
 endif()
 
-target_link_libraries(DVPDETECT PRIVATE 
+target_include_directories(DVPDETECT PUBLIC ${PROJECT_SOURCE_DIR}/third_party/cpp_redis/includes)
+target_include_directories(DVPDETECT PUBLIC ${PROJECT_SOURCE_DIR}/third_party/cpp_redis/tacopie/includes)
+
+target_link_libraries(DVPDETECT PUBLIC 
     DVP2::DVPCamera 
     DVP2::dvpir
+    IKap::IKapC 
+    IKap::IKapBoard 
     concurrentqueue
     BS_thread_pool
+    cpp_redis tacopie
     PUBLIC
     ${OpenCV_LIBS}
     DVPUtils
@@ -41,6 +47,9 @@ endif()
 
 add_executable(main ${DVPDETECT_SOURCE})
 
+target_include_directories(main PRIVATE ${PROJECT_SOURCE_DIR}/third_party/cpp_redis/includes)
+target_include_directories(main PRIVATE ${PROJECT_SOURCE_DIR}/third_party/cpp_redis/tacopie/includes)
+
 if(MSVC)
     target_compile_options(main PRIVATE
         /source-charset:utf-8
@@ -51,17 +60,13 @@ endif()
 
 # 链接DVP库和第三方库
 target_link_libraries(main PRIVATE 
-    DVP2::DVPCamera 
-    DVP2::dvpir
-    DVPUtils
-    concurrentqueue
-    BS_thread_pool
-    ${OpenCV_LIBS}
-    )
+    DVPDETECT
+)
+
 
 if(SAVE_RESULT_IMG)
     target_compile_definitions(main PRIVATE SAVE_RESULT_IMAGE_QUEUE)
 endif()
 
 add_subdirectory(utils)
-add_subdirectory(client)
+#add_subdirectory(client)

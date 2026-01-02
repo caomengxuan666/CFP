@@ -1,5 +1,5 @@
 /*
- *  Copyright © 2025 [caomengxuan666]
+ *  Copyright © 2025-2026 [caomengxuan666]
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
  *  of this software and associated documentation files (the “Software”), to
@@ -21,7 +21,7 @@
  *
  *  - File: AlgoBase.hpp
  *  - Username: Administrator
- *  - CopyrightYear: 2025
+ *  - CopyrightYear: 2025-2026
  */
 
 #pragma once
@@ -33,8 +33,8 @@
 #include <utility>
 #include <vector>
 
-#include "FrameProcessor.hpp"
-#include "ImageSignalBus.hpp"
+#include "cameras/FrameProcessor.hpp"
+#include "cameras/ImageSignalBus.hpp"
 
 namespace algo {
 

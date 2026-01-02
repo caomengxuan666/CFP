@@ -1,5 +1,5 @@
 /*
- *  Copyright © 2025 [caomengxuan666]
+ *  Copyright © 2025-2026 [caomengxuan666]
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
  *  of this software and associated documentation files (the “Software”), to
@@ -21,7 +21,7 @@
  *
  *  - File: LegacyCodec.cpp
  *  - Username: Administrator
- *  - CopyrightYear: 2025
+ *  - CopyrightYear: 2025-2026
  */
 
 // Copyright (c) 2025 caomengxuan666
@@ -63,8 +63,8 @@ std::vector<uint8_t> LegacyCodec::encode_config(const ServerConfig& config) {
   std::string min_area_str = config.min_defect_area_str;
   min_area_str.resize(5, ' ');
   buffer.insert(buffer.end(), min_area_str.begin(), min_area_str.end());
-
-  // 料头长度 (4字节 float)
+  // NOLINTBEGIN
+  //  料头长度 (4字节 float)
   float head_length = config.head_length;
   buffer.insert(buffer.end(), reinterpret_cast<uint8_t*>(&head_length),
                 reinterpret_cast<uint8_t*>(&head_length) + 4);
@@ -119,7 +119,7 @@ std::vector<uint8_t> LegacyCodec::encode_config(const ServerConfig& config) {
       }
     }
   }
-
+  // NOLINTEND
   return buffer;
 }
 
@@ -133,6 +133,7 @@ std::optional<ServerConfig> LegacyCodec::decode_config(
   size_t offset = 1;
 
   // 卷号 (72字节)
+  // NOLINTBEGIN
   if (offset + 72 > data.size()) return std::nullopt;
   config.roll_id =
       std::string(reinterpret_cast<const char*>(data.data() + offset), 72);
@@ -168,8 +169,8 @@ std::optional<ServerConfig> LegacyCodec::decode_config(
   if (offset + 4 > data.size()) return std::nullopt;
   std::memcpy(&config.head_length, data.data() + offset, 4);
   offset += 4;
-
-  // 尝试解析可选字段（不强制）
+  // NOLINTEND
+  //  尝试解析可选字段（不强制）
   parse_optional_fields(data, offset, config);
 
   return config;
@@ -255,6 +256,7 @@ std::vector<uint8_t> LegacyCodec::encode_features(const FeatureReport& report) {
   buffer.insert(buffer.end(), padded_roll.begin(), padded_roll.end());
 
   // 特征个数 (4字节)
+  // NOLINTBEGIN
   int32_t num_features = static_cast<int32_t>(report.features.size());
   buffer.insert(buffer.end(), reinterpret_cast<uint8_t*>(&num_features),
                 reinterpret_cast<uint8_t*>(&num_features) + 4);
@@ -279,7 +281,7 @@ std::vector<uint8_t> LegacyCodec::encode_features(const FeatureReport& report) {
                 reinterpret_cast<uint8_t*>(&img_len) + 4);
   buffer.insert(buffer.end(), report.image_data.begin(),
                 report.image_data.end());
-
+  // NOLINTEND
   return buffer;
 }
 
@@ -291,8 +293,8 @@ std::optional<FeatureReport> LegacyCodec::decode_features(
 
   FeatureReport report;
   size_t offset = 1;
-
-  // 卷号 (72字节)
+  // NOLINTBEGIN
+  //  卷号 (72字节)
   if (offset + 72 > data.size()) return std::nullopt;
   report.roll_id =
       std::string(reinterpret_cast<const char*>(data.data() + offset), 72);
@@ -331,7 +333,7 @@ std::optional<FeatureReport> LegacyCodec::decode_features(
   if (offset + img_len > data.size()) return std::nullopt;
   report.image_data.assign(data.data() + offset,
                            data.data() + offset + img_len);
-
+  // NOLINTEND
   return report;
 }
 
@@ -340,8 +342,10 @@ std::vector<uint8_t> LegacyCodec::encode_status(const FrontendStatus& status) {
   buffer.push_back('T');
 
   uint32_t status_int = status.to_uint32();
-  buffer.insert(buffer.end(), reinterpret_cast<uint8_t*>(&status_int),
-                reinterpret_cast<uint8_t*>(&status_int) + 4);
+
+  buffer.insert(buffer.end(),
+                reinterpret_cast<uint8_t*>(&status_int),       // NOLINT
+                reinterpret_cast<uint8_t*>(&status_int) + 4);  // NOLINT
   return buffer;
 }
 
@@ -361,6 +365,29 @@ std::optional<FrontendStatus> LegacyCodec::decode_status(
   status.image_anomaly = (status_int & (1U << 6)) != 0;
 
   return status;
+}
+
+std::optional<SegmentationParams> LegacyCodec::decode_segmentation_params(
+    std::span<const uint8_t> data) {
+  if (data.size() < 4 + 16 + 4 + 16) {  // 4+16+4+16 = 40字节
+    return std::nullopt;
+  }
+
+  SegmentationParams params;
+
+  // 上表面编号 (4字节)
+  std::memcpy(&params.upper_surface_id, data.data(), 4);
+
+  // 上表面大图参数 (16字节)
+  std::memcpy(params.upper_large_params.data(), data.data() + 4, 16);
+
+  // 下表面编号 (4字节)
+  std::memcpy(&params.lower_surface_id, data.data() + 20, 4);
+
+  // 下表面大图参数 (16字节)
+  std::memcpy(params.lower_large_params.data(), data.data() + 24, 16);
+
+  return params;
 }
 
 }  // namespace protocol

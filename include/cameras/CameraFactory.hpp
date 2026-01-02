@@ -1,5 +1,5 @@
 /*
- *  Copyright © 2025 [caomengxuan666]
+ *  Copyright © 2025-2026 [caomengxuan666]
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
  *  of this software and associated documentation files (the “Software”), to
@@ -21,7 +21,7 @@
  *
  *  - File: CameraFactory.hpp
  *  - Username: Administrator
- *  - CopyrightYear: 2025
+ *  - CopyrightYear: 2025-2026
  */
 
 #pragma once
@@ -33,7 +33,7 @@
 
 struct CameraConfig;
 class CameraCapture;
-enum class CameraBrand { DVP, IK, MIND };
+enum class CameraBrand { DVP, IKap, MIND };
 
 std::unique_ptr<CameraCapture> create_camera(const CameraBrand& brand,
                                              const std::string& identifier,

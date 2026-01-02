@@ -1,5 +1,5 @@
 /*
- *  Copyright © 2025 [caomengxuan666]
+ *  Copyright © 2025-2026 [caomengxuan666]
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
  *  of this software and associated documentation files (the “Software”), to
@@ -21,14 +21,10 @@
  *
  *  - File: CameraConfig.hpp
  *  - Username: Administrator
- *  - CopyrightYear: 2025
+ *  - CopyrightYear: 2025-2026
  */
 
 #pragma once
-
-#include <string>
-
-// TODO 由于我还没有看具体的需求，先复制了一个DvpConfig,实际不会有这么多共同参数
 
 // 通用相机配置结构
 struct CameraConfig {

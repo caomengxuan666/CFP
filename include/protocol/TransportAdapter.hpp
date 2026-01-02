@@ -1,5 +1,5 @@
 /*
- *  Copyright © 2025 [caomengxuan666]
+ *  Copyright © 2025-2026 [caomengxuan666]
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
  *  of this software and associated documentation files (the “Software”), to
@@ -21,17 +21,16 @@
  *
  *  - File: TransportAdapter.hpp
  *  - Username: Administrator
- *  - CopyrightYear: 2025
+ *  - CopyrightYear: 2025-2026
  */
 
 // Copyright (c) 2025 caomengxuan666
 #pragma once
 #include <functional>
-#include <memory>
 #include <span>
+#include <string>
 #include <system_error>
-
-#include "asio.hpp"
+#include <vector>
 
 namespace protocol {
 

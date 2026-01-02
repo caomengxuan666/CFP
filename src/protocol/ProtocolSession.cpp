@@ -1,5 +1,5 @@
 /*
- *  Copyright © 2025 [caomengxuan666]
+ *  Copyright © 2025-2026 [caomengxuan666]
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
  *  of this software and associated documentation files (the “Software”), to
@@ -21,7 +21,7 @@
  *
  *  - File: ProtocolSession.cpp
  *  - Username: Administrator
- *  - CopyrightYear: 2025
+ *  - CopyrightYear: 2025-2026
  */
 
 // Copyright (c) 2025 caomengxuan666
@@ -31,8 +31,6 @@
 #include <memory>
 #include <string>
 #include <utility>
-
-#include "protocol/AsioTcpTransport.hpp"
 
 namespace protocol {
 
@@ -44,11 +42,7 @@ ProtocolSession::ProtocolSession(
       config_transport_(std::move(config_transport)),
       report_transport_(std::move(report_transport)) {}
 
-ProtocolSession::~ProtocolSession() {
-  if (reconnect_timer_) {
-    reconnect_timer_->cancel();
-  }
-}
+ProtocolSession::~ProtocolSession() {}
 
 void ProtocolSession::async_connect(
     const std::string& ip, uint16_t port,
@@ -59,23 +53,6 @@ void ProtocolSession::async_connect(
           std::cerr << "Connect failed: " << ec.message() << std::endl;
         }
         callback(ec);
-      });
-}
-
-void ProtocolSession::async_receive_config(ConfigCallback callback) {
-  config_transport_->async_receive(
-      [this, callback](std::error_code ec, auto data) {
-        if (ec) {
-          callback(nullptr);
-          return;
-        }
-
-        auto config = codec_->decode_config(data);
-        if (config) {
-          callback(std::make_shared<ServerConfig>(*config));
-        } else {
-          callback(nullptr);
-        }
       });
 }
 
@@ -125,51 +102,18 @@ void ProtocolSession::async_send_status(const FrontendStatus& status,
   report_transport_->async_send(data, callback);
 }
 
-void ProtocolSession::start_reconnect_timer(uint16_t interval_sec) {
-  auto* tcp_transport =
-      dynamic_cast<AsioTcpTransport*>(config_transport_.get());
-  if (!tcp_transport || reconnect_timer_) {
-    return;
-  }
+void ProtocolSession::async_send_telemetry(const TelemetryData& telemetry,
+                                           SendCallback callback) {
+  // 构建 ServerConfig 用于 19700 遥测数据
+  ServerConfig config;
+  config.roll_id = telemetry.roll_id;
+  config.head_length = telemetry.length;  // 复用 head_length 字段存储料长
 
-  asio::io_context& io_ctx = tcp_transport->get_io_context();
-  reconnect_timer_ = std::make_unique<asio::steady_timer>(io_ctx);
+  // 编码使用 ICodec 接口
+  auto data = codec_->encode_config(config);
 
-  struct ReconnectHandler {
-    ProtocolSession* session;
-    asio::steady_timer* timer;
-    uint16_t interval_sec;
-
-    void operator()(std::error_code ec) {
-      if (ec) {
-        return;
-      }
-
-      // 重连
-      session->async_connect(
-          "192.1.53.9", 19700,
-          [session_raw_ptr = this->session](std::error_code ec) {
-            if (!ec) {
-              session_raw_ptr->async_receive_config(
-                  [](std::shared_ptr<protocol::ServerConfig> config) {
-                    // 实际项目中应通过回调通知算法层
-                    if (config) {
-                      std::cout
-                          << "Reconnected! New config: " << config->roll_id
-                          << "\n";
-                    }
-                  });
-            }
-          });
-
-      // 重新设置定时器
-      timer->expires_after(std::chrono::seconds(interval_sec));
-      timer->async_wait(std::move(*this));
-    }
-  };
-
-  reconnect_timer_->expires_after(std::chrono::seconds(interval_sec));
-  reconnect_timer_->async_wait(
-      ReconnectHandler{this, reconnect_timer_.get(), interval_sec});
+  // 通过 config_transport_ 发送到 19700
+  config_transport_->async_send(data, callback);
 }
+
 }  // namespace protocol

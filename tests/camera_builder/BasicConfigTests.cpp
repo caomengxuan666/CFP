@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "../mock/DVPCameraMock.hpp"
-#include "DvpCameraBuilder.hpp"
+#include "cameras/Dvp/DvpCameraBuilder.hpp"
 
 // 测试基础配置构建器功能
 class BasicConfigTests : public ::testing::Test {

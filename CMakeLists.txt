@@ -1,5 +1,21 @@
 cmake_minimum_required(VERSION 3.15)
 
+include(cmake/ApplyPatch.cmake)
+
+# 对 cpp_redis 打补丁
+ApplyPatch(
+    PATCH_DIR "${CMAKE_SOURCE_DIR}/patches"
+    BASE_DIR "${CMAKE_SOURCE_DIR}/third_party/cpp_redis"
+    VERBOSE
+)
+
+# 对 tacopie 打补丁
+ApplyPatch(
+    PATCH_DIR "${CMAKE_SOURCE_DIR}/patches"
+    BASE_DIR "${CMAKE_SOURCE_DIR}/third_party/cpp_redis/tacopie"
+    VERBOSE
+)
+
 # -------------------------------
 # 1. 核心：添加 OpenCV 按需查找的开关（默认关闭，仅手动开启时查找）
 # -------------------------------
@@ -54,6 +70,8 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # 查找DVP包
 find_package(DVP2 REQUIRED)
+
+find_package(IKap REQUIRED)
 
 # -------------------------------
 # 4. 核心优化：按需查找 OpenCV + 缓存结果
@@ -116,5 +134,10 @@ target_include_directories(BS_thread_pool INTERFACE
 # 包含QtAntDesign库
 add_subdirectory(third_party/AntDesign)
 
+# cpp-redis
+add_subdirectory(third_party/cpp_redis)
+
 add_subdirectory(src)
 
+# 添加examples子目录
+add_subdirectory(examples)

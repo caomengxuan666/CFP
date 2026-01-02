@@ -1,5 +1,5 @@
 /*
- *  Copyright © 2025 [caomengxuan666]
+ *  Copyright © 2025-2026 [caomengxuan666]
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
  *  of this software and associated documentation files (the “Software”), to
@@ -21,7 +21,7 @@
  *
  *  - File: LegacyCodec.hpp
  *  - Username: Administrator
- *  - CopyrightYear: 2025
+ *  - CopyrightYear: 2025-2026
  */
 
 // Copyright (c) 2025 caomengxuan666
@@ -48,6 +48,8 @@ class LegacyCodec : public ICodec {
   std::vector<uint8_t> encode_status(const FrontendStatus& status) override;
   std::optional<FrontendStatus> decode_status(
       std::span<const uint8_t> data) override;
+  std::optional<SegmentationParams> decode_segmentation_params(
+      std::span<const uint8_t> data);
 
  private:
   void trim_trailing_spaces(std::string& s);

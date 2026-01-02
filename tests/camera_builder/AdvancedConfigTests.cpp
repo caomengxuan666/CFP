@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "../mock/DVPCameraMock.hpp"
-#include "DvpCameraBuilder.hpp"
+#include "cameras/Dvp/DvpCameraBuilder.hpp"
 // 包含DVPCamera.h以使用TRIGGER_SOURCE_SOFTWARE枚举
 #include "../../third_party/DVP_SDK/include/DVPCamera.h"
 
