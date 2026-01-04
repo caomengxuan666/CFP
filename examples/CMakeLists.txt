@@ -15,14 +15,6 @@ foreach(example_file ${EXAMPLE_SOURCES})
         CFP
     )
 
-    if(MSVC)
-        target_compile_options(${example_name} PRIVATE
-            /source-charset:utf-8
-            /execution-charset:utf-8
-        )
-    endif()
-
-    
     # 设置输出目录
     set_target_properties(${example_name} PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/examples

@@ -19,16 +19,14 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  *
- *  - File: AlogoParams.hpp
+ *  - File: GlobalConfig.hpp
  *  - Username: Administrator
  *  - CopyrightYear: 2025-2026
  */
-
 #pragma once
-#include <algorithm>
 #include <atomic>
 #include <exception>
-#include <filesystem>
+#include <filesystem>  //NOLINT
 #include <iostream>
 #include <memory>
 #include <mutex>
@@ -36,23 +34,28 @@
 #include <thread>
 #include <vector>
 
-// 先前向声明，兼容 ConfigObserver.hpp
-namespace config {
-struct GlobalConfig;
-struct HoleDetectionConfig;
-}  // namespace config
-
+#include "../utils/executable_path.h"
+#include "../utils/inicpp.hpp"
+#include "ConfigMacros.hpp"
 #include "ConfigObserver.hpp"
-#include "utils/executable_path.h"
-#include "utils/inicpp.hpp"
 
+// ===========================================================================
+// 我们提供的配置项
+// 点击这里快速跳转到具体的配置项部分
+CONFIG_FORWARD_DECLARE(GlobalConfig)            // 全局配置
+CONFIG_FORWARD_DECLARE(HoleDetectionConfig)     // 孔洞检测配置项
+CONFIG_FORWARD_DECLARE(SurfaceDetectionConfig)  // 表面检测配置项
+CONFIG_FORWARD_DECLARE(LoggingConfig)           // 日志配置项
+// ===========================================================================
 namespace config {
 constexpr const char *CONFIG_FILE = "config.ini";
 inline std::string g_config_file_path;
 
+// ── COMPONENT: ConfigFilePath
+// ────────────────────────────────────────────────────────
 inline std::string get_config_file_path() {
   static std::string config_file_path = []() {
-    std::filesystem::path exe_dir(DvpUtils::getExecutableDirectory());
+    std::filesystem::path exe_dir(CFPUtils::getExecutableDirectory());
     return (exe_dir / CONFIG_FILE).string();
   }();
   return config_file_path;
@@ -69,6 +72,11 @@ inline std::string get_default_config_path() {
   return get_config_file_path();
 }
 
+// ==============================具体配置项=========================================
+
+// ==========================================
+//  孔洞检测的配置项
+// ==========================================
 struct HoleDetectionConfig {
   float pixel_per_mm;
   bool enable_real_world_calculation;
@@ -154,22 +162,182 @@ struct HoleDetectionConfig {
   }
 };
 
+// ==========================================
+//  表面检测的配置项
+// ==========================================
 struct SurfaceDetectionConfig {
   // todo: 添加表面检测参数
 };
+
+struct LoggingConfig {
+  std::string file_level;
+  std::string console_level;
+  bool async_enabled;
+  size_t queue_size;
+  bool tcp_send_enabled{false};            // 是否启用TCP日志传输
+  bool udp_send_enabled{false};            // 是否启用UDP日志传输
+  std::string tcp_server_ip{"127.0.0.1"};  // TCP服务器IP
+  uint16_t tcp_server_port{8080};          // TCP服务器端口
+  uint32_t tcp_timeout_ms{3000};           // TCP连接超时时间
+  std::string udp_server_ip{"127.0.0.1"};  // UDP服务器IP
+  uint16_t udp_server_port{8080};          // UDP服务器端口
+  std::string network_level{"err"};        // 网络传输日志级别
+
+  static LoggingConfig load(inicpp::IniManager &ini) {
+    try {
+      auto logging_section = ini["logging"];
+      LoggingConfig config;
+
+      std::string file_level_str = logging_section["file_level"].String();
+      if (file_level_str == "trace" || file_level_str == "debug" ||
+          file_level_str == "info" || file_level_str == "warn" ||
+          file_level_str == "err" || file_level_str == "critical" ||
+          file_level_str == "off") {
+        config.file_level = file_level_str;
+      } else {
+        config.file_level = "info";  // 默认值
+      }
+
+      std::string console_level_str = logging_section["console_level"].String();
+      if (console_level_str == "trace" || console_level_str == "debug" ||
+          console_level_str == "info" || console_level_str == "warn" ||
+          console_level_str == "err" || console_level_str == "critical" ||
+          console_level_str == "off") {
+        config.console_level = console_level_str;
+      } else {
+        config.console_level = "critical";  // 默认值
+      }
+
+      config.async_enabled =
+          logging_section["async_enabled"].String().empty()
+              ? true
+              : static_cast<bool>(logging_section["async_enabled"]);
+
+      config.queue_size = logging_section["queue_size"].String().empty()
+                              ? 32768
+                              : static_cast<size_t>(std::stoi(
+                                    logging_section["queue_size"].String()));
+
+      config.tcp_send_enabled =
+          logging_section["tcp_send_enabled"].String().empty()
+              ? false
+              : static_cast<bool>(logging_section["tcp_send_enabled"]);
+
+      config.udp_send_enabled =
+          logging_section["udp_send_enabled"].String().empty()
+              ? false
+              : static_cast<bool>(logging_section["udp_send_enabled"]);
+
+      config.tcp_server_ip = logging_section["tcp_server_ip"].String().empty()
+                                 ? "127.0.0.1"
+                                 : logging_section["tcp_server_ip"].String();
+
+      config.tcp_server_port =
+          logging_section["tcp_server_port"].String().empty()
+              ? 8080
+              : static_cast<uint16_t>(
+                    std::stoi(logging_section["tcp_server_port"].String()));
+
+      config.tcp_timeout_ms =
+          logging_section["tcp_timeout_ms"].String().empty()
+              ? 3000
+              : static_cast<uint32_t>(
+                    std::stoi(logging_section["tcp_timeout_ms"].String()));
+
+      config.udp_server_ip = logging_section["udp_server_ip"].String().empty()
+                                 ? "127.0.0.1"
+                                 : logging_section["udp_server_ip"].String();
+
+      config.udp_server_port =
+          logging_section["udp_server_port"].String().empty()
+              ? 8080
+              : static_cast<uint16_t>(
+                    std::stoi(logging_section["udp_server_port"].String()));
+
+      config.network_level = logging_section["network_level"].String().empty()
+                                 ? "err"
+                                 : logging_section["network_level"].String();
+
+      return config;
+    } catch (const std::exception &e) {
+      std::cerr << "Exception: " << e.what()
+                << " when loading logging config params" << std::endl;
+      // 返回默认值
+      LoggingConfig config;
+      config.file_level = "info";
+      config.console_level = "critical";
+      config.async_enabled = true;
+      config.queue_size = 32768;
+      config.tcp_send_enabled = false;
+      config.udp_send_enabled = false;
+      config.tcp_server_ip = "127.0.0.1";
+      config.tcp_server_port = 8080;
+      config.tcp_timeout_ms = 3000;
+      config.udp_server_ip = "127.0.0.1";
+      config.udp_server_port = 8080;
+      config.network_level = "err";
+      return config;
+    } catch (...) {
+      std::cerr
+          << "Unknown exception when loading logging config params from ini"
+          << std::endl;
+      // 返回默认值
+      LoggingConfig config;
+      config.file_level = "info";
+      config.console_level = "critical";
+      config.async_enabled = true;
+      config.queue_size = 32768;
+      config.tcp_send_enabled = false;
+      config.udp_send_enabled = false;
+      config.tcp_server_ip = "127.0.0.1";
+      config.tcp_server_port = 8080;
+      config.tcp_timeout_ms = 3000;
+      config.udp_server_ip = "127.0.0.1";
+      config.udp_server_port = 8080;
+      config.network_level = "err";
+      return config;
+    }
+  }
+
+  static void saveDefaults(inicpp::IniManager &ini) {
+    ini.set("logging", "file_level", "info",
+            "文件日志级别 (trace, debug, info, warn, err, critical, off)");
+    ini.set("logging", "console_level", "critical",
+            "控制台日志级别 (trace, debug, info, warn, err, critical, off)");
+    ini.set("logging", "async_enabled", true, "是否启用异步日志");
+    ini.set("logging", "queue_size", 32768, "异步日志队列大小");
+    ini.set("logging", "tcp_send_enabled", false, "是否启用TCP日志传输");
+    ini.set("logging", "udp_send_enabled", false, "是否启用UDP日志传输");
+    ini.set("logging", "tcp_server_ip", "127.0.0.1", "TCP日志服务器IP地址");
+    ini.set("logging", "tcp_server_port", 8080, "TCP日志服务器端口");
+    ini.set("logging", "tcp_timeout_ms", 3000, "TCP连接超时时间(毫秒)");
+    ini.set("logging", "udp_server_ip", "127.0.0.1", "UDP日志服务器IP地址");
+    ini.set("logging", "udp_server_port", 8080, "UDP日志服务器端口");
+    ini.set("logging", "network_level", "err", "网络传输日志级别");
+  }
+};
+
+// ==========================================
+//  全局检测的配置项
+// ==========================================
 struct GlobalConfig {
   std::string title;
-  HoleDetectionConfig hole_detection;
-  SurfaceDetectionConfig surface_detection;
+  HoleDetectionConfig hole_detection;        // 针孔检测
+  SurfaceDetectionConfig surface_detection;  // 表面检测
+  LoggingConfig logging_settings;            // 日志配置
   static GlobalConfig load();
 
   static void saveDefaults(inicpp::IniManager &ini) {
     ini.set("", "title", "CFP", "应用标题");
     HoleDetectionConfig::saveDefaults(ini);
+    // SurfaceDetectionConfig::saveDefaults(ini);
+    LoggingConfig::saveDefaults(ini);
   }
 };
 
-// 检查并创建默认配置（关键修改）
+//   ▶ Initialization Logic
+// ─────────────────────────────全局配置项的初始化逻辑都在这里─────────────────────────────
+// 检查并创建默认配置
 inline void check_and_create_default_config() {
   std::string config_path = get_default_config_path();
   std::filesystem::path config_file(config_path);
@@ -217,6 +385,8 @@ inline GlobalConfig GlobalConfig::load() {
     config.title =
         ini[""]["title"].String().empty() ? "CFP" : ini[""]["title"].String();
     config.hole_detection = HoleDetectionConfig::load(ini);
+    // config.surface_detection = SurfaceDetectionConfig::load(ini);
+    config.logging_settings = LoggingConfig::load(ini);
     return config;
   } catch (std::exception &e) {
     std::cerr << "Failed to load global config: " << e.what() << std::endl;
@@ -230,6 +400,8 @@ inline std::unique_ptr<ConfigLoader> g_config_loader;
 inline std::unique_ptr<GlobalConfig> g_current_config;
 inline std::mutex g_config_mutex;
 inline std::atomic<bool> g_config_initialized{false};
+
+// ──────────────────────────────────────────动态配置文件加载器───────────────────────────────────────────
 
 class ConfigLoader {
  protected:

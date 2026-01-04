@@ -31,8 +31,8 @@
 
 #include "algo/AlgoBase.hpp"
 #include "algo/AlgorithmConfigTraits.hpp"
-#include "config/AlogoParams.hpp"
 #include "config/ConfigObserver.hpp"
+#include "config/GlobalConfig.hpp"
 
 namespace algo {
 

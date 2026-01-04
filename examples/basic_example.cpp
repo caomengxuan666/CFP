@@ -29,12 +29,12 @@
 #include <utility>
 #include <vector>
 
-#include "cameras/Dvp/DvpCameraBuilder.hpp"
-#include "cameras/FrameProcessor.hpp"
-#include "cameras/MultiCameraCoordinator.hpp"
 #include "algo/HoleDetection.hpp"
 #include "cameras/CameraFactory.hpp"
 #include "cameras/CameraManager.hpp"
+#include "cameras/Dvp/DvpCameraBuilder.hpp"
+#include "cameras/FrameProcessor.hpp"
+#include "cameras/MultiCameraCoordinator.hpp"
 #include "config/ConfigManager.hpp"
 
 // ── Simple DEMO ────────────────────────────────────────────────────────

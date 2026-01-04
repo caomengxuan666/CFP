@@ -25,8 +25,9 @@
  */
 
 #pragma once
-#include "config/CameraConfig.hpp"
 #include <memory>
+
+#include "config/CameraConfig.hpp"
 
 struct DvpConfig : public CameraConfig {
   // 基本图像参数 (继承自CameraConfig)
@@ -73,8 +74,8 @@ struct DvpConfig : public CameraConfig {
   // bool flip_horizontal_state = false;  // 横向翻转使能
   // bool flip_vertical_state = false;    // 纵向翻转使能
   // bool rotate_state = false;           // 旋转使能
-  // bool rotate_opposite = false;        // 旋转方向 (false=顺时针，true=逆时针)
-  // float black_level = 0.0f;            // 黑电平
+  // bool rotate_opposite = false;        // 旋转方向
+  // (false=顺时针，true=逆时针) float black_level = 0.0f;            // 黑电平
   // int color_temperature = 6500;        // 色温 (单位K，默认6500K)
   // bool flat_field_state = false;       // 平场校正使能
   // bool defect_fix_state = false;       // 缺陷像素校正使能

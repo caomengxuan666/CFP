@@ -44,7 +44,7 @@ CFP 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP/IK/MI
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Configuration Layer                                                        │
 │  ┌─────────────────────────────────────────────────────────────────────────┐│
-│  │  DvpConfig  ConfigManager  CameraConfig  AlogoParams                     ││
+│  │  DvpConfig  ConfigManager  CameraConfig  GlobalConfig                     ││
 │  └─────────────────────────────────────────────────────────────────────────┘│
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Algorithm Layer                                                            │
@@ -119,7 +119,7 @@ std::shared_ptr<protocol::ProtocolSession> backup_telemetry_session_;  // 19700 
   - 参数存储和更新
   - 配置验证
   - 参数持久化
-- **依赖**: [AlogoParams](file:///d:/codespace/CFP/include/config/AlogoParams.hpp#L1-L15), [CameraConfig](file:///d:/codespace/CFP/include/config/CameraConfig.hpp#L1-L28)
+- **依赖**: [GlobalConfig](file:///d:/codespace/CFP/include/config/GlobalConfig.hpp#L1-L15), [CameraConfig](file:///d:/codespace/CFP/include/config/CameraConfig.hpp#L1-L28)
 
 ### 2. 通信协议层 (Communication & Protocol Layer)
 

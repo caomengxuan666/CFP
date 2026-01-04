@@ -35,7 +35,6 @@
 
 namespace protocol {
 
-
 AsioTcpTransport::AsioTcpTransport(asio::io_context& io_ctx)
     : io_ctx_(io_ctx), socket_(io_ctx) {}
 

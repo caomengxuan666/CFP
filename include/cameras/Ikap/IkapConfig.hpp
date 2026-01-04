@@ -30,7 +30,6 @@
 #include "IKapC.h"
 #include "config/CameraConfig.hpp"
 
-
 struct IkapConfig : public CameraConfig {
   // IKAP特有参数（从IKap SDK宏定义提取）
   uint32_t start_mode =

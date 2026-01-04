@@ -1,4 +1,5 @@
 include_directories(${CMAKE_SOURCE_DIR}/include)
+
 # 创建测试可执行文件
 
 # 1. 递归遍历所有 .cpp 文件（先获取全部文件）
@@ -18,12 +19,6 @@ message("CFP_SOURCE: ${CFP_SOURCE}")
 
 
 add_library(CFP STATIC ${CFP_SOURCE})
-if(MSVC)
-    target_compile_options(CFP PRIVATE
-        /source-charset:utf-8
-        /execution-charset:utf-8
-    )
-endif()
 
 target_include_directories(CFP PUBLIC ${PROJECT_SOURCE_DIR}/third_party/cpp_redis/includes)
 target_include_directories(CFP PUBLIC ${PROJECT_SOURCE_DIR}/third_party/cpp_redis/tacopie/includes)
@@ -37,8 +32,9 @@ target_link_libraries(CFP PUBLIC
     BS_thread_pool
     cpp_redis tacopie
     ${OpenCV_LIBS}
-    DVPUtils
-    )
+    CFPUtils
+    CaponLogging
+)
 
 if(SAVE_RESULT_IMG)
     target_compile_definitions(CFP PRIVATE SAVE_RESULT_IMAGE_QUEUE)
@@ -48,14 +44,6 @@ add_executable(main ${CFP_SOURCE})
 
 target_include_directories(main PRIVATE ${PROJECT_SOURCE_DIR}/third_party/cpp_redis/includes)
 target_include_directories(main PRIVATE ${PROJECT_SOURCE_DIR}/third_party/cpp_redis/tacopie/includes)
-
-if(MSVC)
-    target_compile_options(main PRIVATE
-        /source-charset:utf-8
-        /execution-charset:utf-8
-    )
-endif()
-
 
 # 链接DVP库和第三方库
 target_link_libraries(main PRIVATE 
@@ -68,5 +56,6 @@ if(SAVE_RESULT_IMG)
 endif()
 
 add_subdirectory(utils)
+add_subdirectory(logging)
 # client暂时不着急制作，需要统一多相机接口之后再慢慢看怎么开发
 #add_subdirectory(client)
