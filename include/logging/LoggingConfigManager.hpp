@@ -1,5 +1,5 @@
 /*
- *  Copyright © 2025-2026 [caomengxuan666]
+ *  Copyright © 2026 [caomengxuan666]
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
  *  of this software and associated documentation files (the “Software”), to
@@ -19,58 +19,35 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  *
- *  - File: executable_path.cpp
+ *  - File: LoggingConfigManager.hpp
  *  - Username: Administrator
- *  - CopyrightYear: 2025-2026
+ *  - CopyrightYear: 2026
  */
 
-#include "utils/executable_path.h"
+#pragma once
 
-#include <string>
+#include "config/GlobalConfig.hpp"
+#include "logging/CaponLogging.hpp"
 
-#ifdef _WIN32
-#include <shlwapi.h>  // PathRemoveFileSpec
-#include <windows.h>
-#pragma comment(lib, "shlwapi.lib")
-#else
-#include <libgen.h>
-#include <limits.h>
-#include <unistd.h>
+namespace logging {
 
-#include <string>
-
-#endif
-
-namespace CFPUtils {
-
-std::string getExecutablePath() {
-#ifdef _WIN32
-  char path[MAX_PATH];
-  if (GetModuleFileNameA(nullptr, path, MAX_PATH) == 0) {
-    return "";
-  }
-  return std::string(path);
-#else
-  char result[PATH_MAX];
-  ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
-  return count != -1 ? std::string(result, count) : "";
-#endif
-}
-
-std::string getExecutableDirectory() {
-  std::string exec_path = getExecutablePath();
-  if (exec_path.empty()) {
-    return "";
+class LoggingConfigManager {
+ public:
+  static LoggingConfigManager& getInstance() {
+    static LoggingConfigManager instance;
+    return instance;
   }
 
-#ifdef _WIN32
-  char dir[MAX_PATH];
-  strcpy_s(dir, exec_path.c_str());
-  PathRemoveFileSpecA(dir);
-  return std::string(dir);
-#else
-  return std::string(dirname(const_cast<char *>(exec_path.c_str())));
-#endif
-}
+  void applyLoggingConfig(const config::LoggingConfig& loggingConfig) {
+    CaponLogger::instance().applyConfig(loggingConfig);
+  }
 
-}  // namespace CFPUtils
+  void applyGlobalConfig(const config::GlobalConfig& globalConfig) {
+    applyLoggingConfig(globalConfig.logging_settings);
+  }
+
+ private:
+  LoggingConfigManager() = default;
+};
+
+}  // namespace logging

@@ -58,7 +58,8 @@
  *       - merge_holes() -> merge_close_holes()
  *         * Combine nearby holes based on distance threshold
  *    e. Feature emission and visualization:
- *       - emit_feature() - Emit feature data to signal bus for downstream processing
+ *       - emit_feature() - Emit feature data to signal bus for downstream
+ * processing
  *       - For file processing: create_visualizations() and save_results()
  *       - For video frames: Just output statistics
  */
@@ -1044,7 +1045,7 @@ void HoleDetection::process(const CapturedFrame& frame) {
   HOLE_DETECTION_TIMING_START(total);
   // 直接处理CapturedFrame，不再需要保存结果到文件
   process_single_image(CapturedFrame2Mat(frame), local_config,
-                       local_parsed_params,this);
+                       local_parsed_params, this);
 
   HOLE_DETECTION_TIMING_END(total, "Total time: ");
 }

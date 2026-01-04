@@ -44,13 +44,6 @@ target_link_libraries(CFPTests
     ${OpenCV_LIBS}
 )
 
-if(MSVC)
-    target_compile_options(CFPTests PRIVATE
-        /source-charset:utf-8
-        /execution-charset:utf-8
-    )
-endif()
-
 # 发现并添加所有测试
 include(GoogleTest)
 gtest_discover_tests(CFPTests)

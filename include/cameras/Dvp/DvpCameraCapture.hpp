@@ -59,7 +59,6 @@ class DvpCameraCapture : public CameraCapture {
                                       DvpEventHandler handler);
   virtual void add_frame_processor(const FrameProcessor& processor);
   virtual DvpEventManager* get_event_manager() const;
-  
   auto& get_frame_processor() const { return user_processor_; }
 
   // 获取图像队列的引用

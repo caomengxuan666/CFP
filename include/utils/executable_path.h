@@ -27,7 +27,7 @@
 #pragma once
 #include <string>
 
-namespace DvpUtils {
+namespace CFPUtils {
 
 // get the full path of the currently running executable
 std::string getExecutablePath();
@@ -35,4 +35,4 @@ std::string getExecutablePath();
 // get the directory of the currently running executable
 std::string getExecutableDirectory();
 
-}  // namespace DvpUtils
+}  // namespace CFPUtils

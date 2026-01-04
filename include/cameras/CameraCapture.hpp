@@ -44,5 +44,5 @@ class CameraCapture {
   virtual void set_roi(int x, int y, int width, int height) = 0;
   virtual moodycamel::ConcurrentQueue<std::shared_ptr<CapturedFrame>>&
   get_frame_queue() = 0;
-  virtual protocol::FrontendStatus get_status() const= 0;
+  virtual protocol::FrontendStatus get_status() const = 0;
 };

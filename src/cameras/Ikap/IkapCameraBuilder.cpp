@@ -254,7 +254,7 @@ IkapCameraBuilder& IkapCameraBuilder::onEvent(const IkapEventType event,
 // 转换为IkapConfig
 IkapConfig IkapCameraBuilder::toIkapConfig() const {
   IkapConfig cfg;
-
+  // NOLINTBEGIN
   // 基础参数
   if (config_.exposure_us.has_value()) cfg.exposure_us = *config_.exposure_us;
   if (config_.gain.has_value()) cfg.gain = *config_.gain;
@@ -315,7 +315,7 @@ IkapConfig IkapCameraBuilder::toIkapConfig() const {
     cfg.stream_flow_ctrl = *config_.stream_flow_ctrl;
   if (config_.link_timeout.has_value())
     cfg.link_timeout = *config_.link_timeout;
-
+  // NOLINTEND
   return cfg;
 }
 
@@ -361,6 +361,21 @@ std::unique_ptr<IkapCameraCapture> IkapCameraBuilder::build() {
                 << ", error code: " << status << std::endl;
       continue;
     }
+
+    // 打印设备信息
+    // Print information.
+    printf(
+        "i:%d \n Device Full Name:%s\n Friendly Name:%s\n Vendor Name:%s\n "
+
+        "Model Name:%s\n Serial Name:%s\n Device Class:%s\n "
+
+        "Device Version:%s\n User Defined Name:%s\n\n",
+
+        i, di.FullName, di.FriendlyName, di.VendorName, di.ModelName,
+
+        di.SerialNumber, di.DeviceClass, di.DeviceVersion,
+
+        di.UserDefinedName);
 
     // 检查是否和我们的标识字段匹配
     if (config_.user_id == di.UserDefinedName ||

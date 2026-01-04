@@ -170,7 +170,9 @@ void IkapCameraCapture::update_status(
 
 void IkapCameraCapture::update_camera_params() {
   std::shared_lock lock(config_mutex_);
-  if (!config_ || !handle_) return;
+  if (!config_ || !handle_) {
+    return;
+  }
 
   // 1. 通用参数更新（新版接口）
   if (config_->exposure_us > 0)
@@ -246,5 +248,5 @@ void IkapCameraCapture::register_event_handler(IkapEventType type,
 }
 
 void IkapCameraCapture::add_frame_processor(const FrameProcessor& processor) {
-  user_processor_ = processor;  // 和DVP完全一致，保存用户帧处理器
+  user_processor_ = processor;
 }

@@ -34,7 +34,6 @@
 #include <unordered_map>
 #include <vector>
 
-
 // cv
 #include <opencv2/core/mat.hpp>
 
@@ -62,12 +61,13 @@ class ImageSignalBus {
   // 单例
   /**
    * @brief 获取ImageSignalBus实例
-   * 
+   *
    * @param ns 命名空间,默认为default
-   * @note 当我们后续使用一台电脑控制多个相机实例的时候，可以更轻松区分信号的命名空间
-   * @return ImageSignalBus& 
+   * @note
+   * 当我们后续使用一台电脑控制多个相机实例的时候，可以更轻松区分信号的命名空间
+   * @return ImageSignalBus&
    */
-  
+
   static ImageSignalBus& instance(const std::string& ns = "default");
 
   // 算法调用：声明自己能提供哪些信号

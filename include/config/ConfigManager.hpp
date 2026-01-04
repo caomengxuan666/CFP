@@ -30,10 +30,10 @@
 #include <utility>
 #include <vector>
 
-#include "AlogoParams.hpp"
+#include "GlobalConfig.hpp"
 #include "algo/GenericAlgorithmConfigObserver.hpp"
-#include "config/AlogoParams.hpp"
 #include "config/ConfigObserver.hpp"
+#include "config/GlobalConfig.hpp"
 
 namespace config {
 

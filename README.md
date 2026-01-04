@@ -174,7 +174,7 @@ CFP Project Structure
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Configuration Layer                                                        │
 │  ┌─────────────────────────────────────────────────────────────────────────┐│
-│  │  DvpConfig  IkapConfig  ConfigManager  CameraConfig  AlogoParams         ││
+│  │  DvpConfig  IkapConfig  ConfigManager  CameraConfig  GlobalConfig         ││
 │  └─────────────────────────────────────────────────────────────────────────┘│
 ├─────────────────────────────────────────────────────────────────────────────┤
 │  Algorithm Layer                                                            │

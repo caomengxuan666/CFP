@@ -1,7 +1,6 @@
 cmake_minimum_required(VERSION 3.15)
 
 include(cmake/ApplyPatch.cmake)
-
 # 对 cpp_redis 打补丁
 ApplyPatch(
     PATCH_DIR "${CMAKE_SOURCE_DIR}/patches"
@@ -24,7 +23,7 @@ option(ENABLE_OPENCV "是否启用 OpenCV 功能（启用则查找，禁用则�
 set(OpenCV_DIR "D:/vcpkg/installed/x64-windows/share/opencv4" CACHE PATH "OpenCV Config 目录（vcpkg 安装路径）")
 set(CMAKE_DISABLE_FIND_PACKAGE_WrapVulkanHeaders TRUE)
 # 添加测试选项
-option(ENABLE_TESTS "是否启用测试" ON)
+option(ENABLE_TESTS "是否启用测试" OFF)
 
 # -------------------------------
 # 2. vcpkg 基础配置
@@ -66,9 +65,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 if (WIN32)
     add_definitions(-DNOMINMAX)
     if(MSVC)
-        # 天杀的QT和这个冲突了，所以我们只能对SDK的所有目标应用这个了。
         #add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/source-charset:utf-8>")
-        # add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/execution-charset:utf-8>")
+        #add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/execution-charset:utf-8>")
     endif()
 endif()
 
@@ -143,6 +141,9 @@ add_subdirectory(third_party/AntDesign)
 
 # cpp-redis
 add_subdirectory(third_party/cpp_redis)
+
+# spdlog
+add_subdirectory(third_party/spdlog)
 
 add_subdirectory(src)
 

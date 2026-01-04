@@ -105,16 +105,16 @@ void DvpCameraCapture::stop() {
 }
 
 void DvpCameraCapture::set_config(const DvpConfig& cfg) {
-    {
-        std::unique_lock<std::shared_mutex> lock(config_mutex_);
-        *config_ = cfg;
-    }
-    update_camera_params();
+  {
+    std::unique_lock<std::shared_mutex> lock(config_mutex_);
+    *config_ = cfg;
+  }
+  update_camera_params();
 }
 
 DvpConfig DvpCameraCapture::get_config() const {
-    std::shared_lock<std::shared_mutex> lock(config_mutex_);
-    return *config_;
+  std::shared_lock<std::shared_mutex> lock(config_mutex_);
+  return *config_;
 }
 
 void DvpCameraCapture::register_event_handler(DvpEventType event,
@@ -331,8 +331,8 @@ void DvpCameraCapture::update_camera_params() {
 
 // 统一基类接口实现
 void DvpCameraCapture::set_config(const CameraConfig& cfg) {
-    const auto& dvp_cfg = static_cast<const DvpConfig&>(cfg);
-    set_config(dvp_cfg);
+  const auto& dvp_cfg = static_cast<const DvpConfig&>(cfg);
+  set_config(dvp_cfg);
 }
 
 void DvpCameraCapture::set_roi(int x, int y, int width, int height) {
