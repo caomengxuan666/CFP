@@ -35,12 +35,22 @@
 #include "spdlog/async_logger.h"
 #include "spdlog/sinks/rotating_file_sink.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
+#include "spdlog/sinks/stdout_sinks.h"
 #include "spdlog/sinks/tcp_sink.h"
 #include "spdlog/sinks/udp_sink.h"
 #include "spdlog/spdlog.h"
 #include "utils/executable_path.h"
 
 void CaponLogger::initialize() {
+  // 检查是否已经初始化，防止重复初始化
+  if (initialized_.exchange(true)) {
+    if (console_logger_) {
+      console_logger_->warn("日志系统已经初始化，跳过重复初始化");
+    }
+    return;
+  }
+
+  first_init_called_.store(true);  // 标记首次初始化已执行
   // 创建sinks集合
   std::vector<spdlog::sink_ptr> sinks;
 
@@ -101,6 +111,21 @@ void CaponLogger::initialize() {
   }
 }
 
+void CaponLogger::reinitialize() {
+  // 对于重新初始化，我们直接清理现有资源并重新创建
+  if (main_logger_) {
+    spdlog::drop(main_logger_->name());
+    main_logger_.reset();
+  }
+  if (console_logger_) {
+    spdlog::drop(console_logger_->name());
+    console_logger_.reset();
+  }
+
+  // 重新初始化
+  initialize();
+}
+
 void CaponLogger::setupNetworkSink(std::vector<spdlog::sink_ptr>& sinks) {
   // 统一的日志格式
   std::string common_pattern = "[%Y-%m-%d %H:%M:%S.%e] [%l] [%t] [%s:%#] %v";
@@ -147,6 +172,49 @@ void CaponLogger::setupNetworkSink(std::vector<spdlog::sink_ptr>& sinks) {
         console_logger_->info("UDP sink configured to {}:{}", udp_config.ip,
                               udp_config.port);
       }
+    } else if (config_.ipc_send_enabled && config_.isIpcConfig()) {
+      auto& ipc_config = config_.getIpcConfig();
+
+      if (ipc_config.isTcp()) {
+        // 创建一个本地 TCP sink（作为 IPC 客户端）
+        spdlog::sinks::tcp_sink_config ipc_sink_config(ipc_config.ip,
+                                                       ipc_config.port);
+        ipc_sink_config.timeout_ms = 3000;
+        ipc_sink_config.lazy_connect = true;
+
+        auto ipc_sink =
+            std::make_shared<spdlog::sinks::tcp_sink_mt>(ipc_sink_config);
+        ipc_sink->set_pattern(common_pattern);
+        ipc_sink->set_level(ipc_config.min_level);
+
+        sinks.push_back(ipc_sink);
+
+        if (console_logger_) {
+          console_logger_->info("IPC sink configured to {}:{}", ipc_config.ip,
+                                ipc_config.port);
+        }
+      } else if (ipc_config.isUdp()) {
+        // UDP sink
+        spdlog::sinks::udp_sink_config ipc_sink_config(ipc_config.ip,
+                                                       ipc_config.port);
+
+        auto ipc_sink =
+            std::make_shared<spdlog::sinks::udp_sink_mt>(ipc_sink_config);
+        ipc_sink->set_pattern(common_pattern);
+        ipc_sink->set_level(ipc_config.min_level);
+
+        sinks.push_back(ipc_sink);
+
+        if (console_logger_) {
+          console_logger_->info("IPC UDP sink configured to {}:{}",
+                                ipc_config.ip, ipc_config.port);
+        }
+      } else {
+        if (console_logger_) {
+          console_logger_->error("Unsupported IPC protocol: {}",
+                                 ipc_config.protocol);
+        }
+      }
     }
   } catch (const std::exception& e) {
     // 使用单独的console logger记录错误，避免递归
@@ -157,26 +225,31 @@ void CaponLogger::setupNetworkSink(std::vector<spdlog::sink_ptr>& sinks) {
 }
 
 bool CaponLogger::shouldLog(spdlog::level::level_enum level) const {
-  // 文件 sink
-  if (level >= config_.file_level.load(std::memory_order_acquire)) {
-    return true;
+  // 👉 优先判断IPC/TCP/UDP（核心：让网络日志优先生效）
+  if (config_.ipc_send_enabled && config_.isIpcConfig()) {
+    if (level >= config_.getIpcConfig().min_level) {
+      return true;
+    }
   }
-  // 控制台 sink
-  if (level >= config_.console_level.load(std::memory_order_acquire)) {
-    return true;
-  }
-  // TCP sink
   if (config_.tcp_send_enabled && config_.isTcpConfig()) {
     if (level >= config_.getTcpConfig().min_level) {
       return true;
     }
   }
-  // UDP sink
   if (config_.udp_send_enabled && config_.isUdpConfig()) {
     if (level >= config_.getUdpConfig().min_level) {
       return true;
     }
   }
+
+  // 再判断文件/控制台
+  if (level >= config_.file_level.load(std::memory_order_relaxed)) {
+    return true;
+  }
+  if (level >= config_.console_level.load(std::memory_order_relaxed)) {
+    return true;
+  }
+
   return false;
 }
 
@@ -201,38 +274,42 @@ void CaponLogger::setConsoleLevel(spdlog::level::level_enum level) {
 }
 
 void CaponLogger::updateLoggerLevels() {
-  // 更新主logger中各个sink的级别
-  if (main_logger_) {
-    auto& sinks = main_logger_->sinks();
+  if (!main_logger_) {
+    return;
+  }
+  auto& sinks = main_logger_->sinks();
+  auto& ipc_cfg = config_.getIpcConfig();
+  auto tcp_level = config_.isTcpConfig() ? config_.getTcpConfig().min_level
+                                         : spdlog::level::off;
+  auto udp_level = config_.isUdpConfig() ? config_.getUdpConfig().min_level
+                                         : spdlog::level::off;
 
-    for (auto& sink : sinks) {
-      // 根据sink类型设置不同的级别
-      if (auto console_sink =
-              std::dynamic_pointer_cast<spdlog::sinks::stdout_color_sink_mt>(
-                  sink)) {
-        console_sink->set_level(config_.console_level.load());
-      } else if (auto file_sink = std::dynamic_pointer_cast<
-                     spdlog::sinks::rotating_file_sink_mt>(sink)) {
-        file_sink->set_level(config_.file_level.load());
-      } else if (auto tcp_sink =
-                     std::dynamic_pointer_cast<spdlog::sinks::tcp_sink_mt>(
-                         sink)) {
-        if (config_.tcp_send_enabled && config_.isTcpConfig()) {
-          tcp_sink->set_level(config_.getTcpConfig().min_level);
-        }
-      } else if (auto udp_sink =
-                     std::dynamic_pointer_cast<spdlog::sinks::udp_sink_mt>(
-                         sink)) {
-        if (config_.udp_send_enabled && config_.isUdpConfig()) {
-          udp_sink->set_level(config_.getUdpConfig().min_level);
-        }
-      }
+  for (auto& sink : sinks) {
+    // 控制台Sink
+    if (auto console_sink =
+            std::dynamic_pointer_cast<spdlog::sinks::stdout_color_sink_mt>(
+                sink)) {
+      console_sink->set_level(
+          config_.console_level.load(std::memory_order_relaxed));
+    } else if (auto file_sink = std::dynamic_pointer_cast<
+                   spdlog::sinks::rotating_file_sink_mt>(sink)) {
+      file_sink->set_level(config_.file_level.load(std::memory_order_relaxed));
+    } else if (auto tcp_sink =
+                   std::dynamic_pointer_cast<spdlog::sinks::tcp_sink_mt>(
+                       sink)) {
+      tcp_sink->set_level(config_.tcp_send_enabled ? tcp_level
+                                                   : ipc_cfg.min_level);
+    } else if (auto udp_sink =
+                   std::dynamic_pointer_cast<spdlog::sinks::udp_sink_mt>(
+                       sink)) {
+      udp_sink->set_level(config_.udp_send_enabled ? udp_level
+                                                   : ipc_cfg.min_level);
     }
   }
-
-  // 更新单独的console logger
+  // 更新独立控制台logger
   if (console_logger_) {
-    console_logger_->set_level(config_.console_level.load());
+    console_logger_->set_level(
+        config_.console_level.load(std::memory_order_relaxed));
   }
 }
 
@@ -250,26 +327,47 @@ void CaponLogger::enableTcpLogging(bool enable, const std::string& ip,
                                    uint16_t port, uint32_t timeout_ms) {
   config_.tcp_send_enabled = enable;
   config_.udp_send_enabled = false;  // TCP和UDP不能同时启用
+  config_.ipc_send_enabled = false;
 
   if (enable) {
     config_.server_config = TcpServerConfig{ip, port, timeout_ms};
   }
 
   // 重新初始化以应用新配置
-  initialize();
+  if (first_init_called_.load()) {
+    reinitialize();
+  }
 }
 
 void CaponLogger::enableUdpLogging(bool enable, const std::string& ip,
                                    uint16_t port) {
   config_.udp_send_enabled = enable;
   config_.tcp_send_enabled = false;  // TCP和UDP不能同时启用
+  config_.ipc_send_enabled = false;
 
   if (enable) {
     config_.server_config = UdpServerConfig{ip, port};
   }
 
   // 重新初始化以应用新配置
-  initialize();
+  if (first_init_called_.load()) {
+    reinitialize();
+  }
+}
+
+void CaponLogger::enableIpcLogging(bool enable, const std::string& ip,
+                                   uint16_t port) {
+  config_.ipc_send_enabled = enable;
+  config_.tcp_send_enabled = false;
+  config_.udp_send_enabled = false;
+
+  if (enable) {
+    config_.server_config = IpcServerConfig{ip, port};
+  }
+
+  if (first_init_called_.load()) {
+    reinitialize();
+  }
 }
 
 void CaponLogger::applyConfig(const config::LoggingConfig& logging_config) {
@@ -288,6 +386,7 @@ void CaponLogger::applyConfig(const config::LoggingConfig& logging_config) {
   config_.queue_size = logging_config.queue_size;
   config_.tcp_send_enabled = logging_config.tcp_send_enabled;
   config_.udp_send_enabled = logging_config.udp_send_enabled;
+  config_.ipc_send_enabled = logging_config.ipc_send_enabled;
 
   // 根据配置设置TCP或UDP服务器配置
   if (logging_config.tcp_send_enabled) {
@@ -303,8 +402,18 @@ void CaponLogger::applyConfig(const config::LoggingConfig& logging_config) {
                                             logging_config.udp_server_port};
     // 设置UDP配置的网络级别
     std::get<UdpServerConfig>(config_.server_config).min_level = network_level;
+  } else if (logging_config.ipc_send_enabled) {
+    config_.server_config = IpcServerConfig{
+        logging_config.ipc_server_ip, logging_config.ipc_server_port,
+        logging_config.ipc_protocol, network_level};
+    std::get<IpcServerConfig>(config_.server_config).min_level = network_level;
   }
 
   // 重新初始化以应用新配置
-  initialize();
+  if (first_init_called_.load()) {
+    reinitialize();
+  } else {
+    // 如果首次初始化尚未执行，仍然调用initialize以确保初始化发生
+    initialize();
+  }
 }

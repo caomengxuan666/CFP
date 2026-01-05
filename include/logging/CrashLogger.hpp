@@ -19,36 +19,23 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  *
- *  - File: log_server.cpp
+ *  - File: CrashLogger.hpp
  *  - Username: Administrator
  *  - CopyrightYear: 2026
  */
+// CrashLogger.hpp
+#pragma once
+#include <stdint.h>
 
-#include <iostream>
-#include <string>
+#include <cstdint>
+#include <string_view>
 
-#include "asio.hpp"
-
-int main() {
-  try {
-    asio::io_context io_context;
-    asio::ip::udp::socket socket(io_context);
-    asio::ip::udp::endpoint listen_endpoint(asio::ip::udp::v4(), 514);
-    socket.open(listen_endpoint.protocol());
-    socket.set_option(asio::ip::udp::socket::reuse_address(true));
-    socket.bind(listen_endpoint);
-
-    std::cout << "UDP 日志服务器启动，监听端口 514..." << std::endl;
-
-    while (true) {
-      char data[8192];
-      asio::ip::udp::endpoint sender_endpoint;
-      size_t length = socket.receive_from(asio::buffer(data), sender_endpoint);
-      std::string log_message(data, length);
-      std::cout << "[接收到日志] " << log_message << std::endl;
-    }
-  } catch (const std::exception& e) {
-    std::cerr << "日志服务器出错: " << e.what() << std::endl;
-  }
-  return 0;
+namespace crashlog {
+void send_udp(std::string_view ip, uint16_t port,
+              std::string_view msg) noexcept;
 }
+
+#define LOG_CRASH_RAW(ip, port, msg)   \
+  do {                                 \
+    crashlog::send_udp(ip, port, msg); \
+  } while (0)

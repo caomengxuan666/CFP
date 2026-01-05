@@ -19,36 +19,27 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  *
- *  - File: log_server.cpp
+ *  - File: CrashHandler.hpp
  *  - Username: Administrator
  *  - CopyrightYear: 2026
  */
+#pragma once
 
-#include <iostream>
 #include <string>
 
-#include "asio.hpp"
+class CrashHandlerImpl;
 
-int main() {
-  try {
-    asio::io_context io_context;
-    asio::ip::udp::socket socket(io_context);
-    asio::ip::udp::endpoint listen_endpoint(asio::ip::udp::v4(), 514);
-    socket.open(listen_endpoint.protocol());
-    socket.set_option(asio::ip::udp::socket::reuse_address(true));
-    socket.bind(listen_endpoint);
+class CrashHandler {
+ private:
+  static CrashHandlerImpl* impl;
 
-    std::cout << "UDP 日志服务器启动，监听端口 514..." << std::endl;
+ public:
+  // 初始化崩溃处理
+  static void initialize();
 
-    while (true) {
-      char data[8192];
-      asio::ip::udp::endpoint sender_endpoint;
-      size_t length = socket.receive_from(asio::buffer(data), sender_endpoint);
-      std::string log_message(data, length);
-      std::cout << "[接收到日志] " << log_message << std::endl;
-    }
-  } catch (const std::exception& e) {
-    std::cerr << "日志服务器出错: " << e.what() << std::endl;
-  }
-  return 0;
-}
+  // 非崩溃路径的致命错误上报
+  static void reportFatal(const char* msg);
+
+  // 清理资源
+  static void cleanup();
+};

@@ -51,6 +51,11 @@ CFP 是一个基于 C++ 和 Qt 的工业视觉检测应用，专注于 DVP/IK/MI
 │  ┌─────────────────────────────────────────────────────────────────────────┐│
 │  │  AlgoBase  GenericAlgorithmConfigObserver  HoleDetection                 ││
 │  └─────────────────────────────────────────────────────────────────────────┘│
+├─────────────────────────────────────────────────────────────────────────────┤
+│  Logging & Crash Handling Layer                                             │
+│  ┌─────────────────────────────────────────────────────────────────────────┐│
+│  │  CaponLogger  CrashHandler  CrashHandlerImpl  CrashLogger               ││
+│  └─────────────────────────────────────────────────────────────────────────┘│
 ```
 
 ## 双服务器冗余架构设计
@@ -267,6 +272,56 @@ std::shared_ptr<protocol::ProtocolSession> backup_telemetry_session_;  // 19700 
   - 孔洞识别
 - **依赖**: [AlgoBase](file:///d:/codespace/CFP/include/algo/AlgoBase.hpp#L1-L16), OpenCV
 
+### 9. 日志与崩溃处理层 (Logging & Crash Handling Layer)
+
+#### 9.1 CaponLogger
+
+- **职责**: 系统日志记录和管理
+- **主要功能**:
+  - 多级日志记录（TRACE、DEBUG、INFO、WARN、ERROR、CRITICAL）
+  - 多目标输出（控制台、文件、网络TCP/UDP）
+  - 异步日志处理以提高性能
+  - 网络日志传输（支持TCP和UDP协议）
+  - 配置化管理日志级别和输出目标
+  - IPC日志传输支持
+- **依赖**: spdlog库, 配置系统, 网络通信模块
+
+#### 9.2 CrashHandler
+
+- **职责**: 系统崩溃处理和异常捕获
+- **主要功能**:
+  - 初始化崩溃处理系统
+  - 捕获Windows结构化异常（SEH）
+  - 捕获C++异常和信号
+  - 非崩溃路径的致命错误上报
+  - 资源清理
+  - 与CaponLogger集成以进行崩溃信息上报
+- **依赖**: CrashHandlerImpl, CaponLogger, 配置系统
+
+#### 9.3 CrashHandlerImpl
+
+- **职责**: 崩溃处理的具体实现
+- **主要功能**:
+  - Windows SEH异常过滤器实现
+  - 调用栈获取和解析
+  - Minidump文件生成
+  - 崩溃信息收集和上报
+  - 异常描述获取
+  - PDB匹配检查
+  - 防止递归崩溃处理
+  - 安全崩溃信息传输
+- **依赖**: Windows调试帮助库（dbghelp.h）, Windows Socket API, CaponLogger
+
+#### 9.4 CrashLogger
+
+- **职责**: 崩溃信息的安全传输
+- **主要功能**:
+  - 通过UDP协议发送崩溃信息
+  - 在崩溃时使用最小安全路径
+  - 避免在崩溃处理中使用可能引发二次崩溃的库
+  - 提供安全的崩溃信息传输宏
+- **依赖**: Windows Socket API
+
 ## 数据流向
 
 ### 图像数据流向
@@ -288,6 +343,14 @@ std::shared_ptr<protocol::ProtocolSession> backup_telemetry_session_;  // 19700 
 [DvpConfigModel](file:///d:/codespace/CFP/src/client/DvpConfigModel.h#L14-L29) → [DvpConfig](file:///d:/codespace/CFP/include/cameras/Dvp/DvpConfig.hpp#L1-L35) → [DvpCameraBuilder](file:///d:/codespace/CFP/include/cameras/Dvp/DvpCameraBuilder.hpp#L1-L25) → 物理相机
 ```
 
+### 日志和崩溃数据流向
+
+```
+应用程序代码 → CaponLogger → spdlog → 文件/控制台/网络(TCP/UDP) 
+异常发生 → CrashHandlerImpl → Minidump文件 + UDP崩溃信息 → 监控服务器
+致命错误 → CrashHandler → UDP崩溃信息 → 监控服务器
+```
+
 ## 关键接口
 
 ### 相机接口
@@ -304,6 +367,16 @@ std::shared_ptr<protocol::ProtocolSession> backup_telemetry_session_;  // 19700 
 
 - `IAlgorithm`: 定义算法执行接口
 - `IAlgorithmConfig`: 定义算法配置接口
+
+### 日志接口
+
+- `spdlog::logger`: spdlog日志接口
+- `CaponLogger`: 系统统一日志管理接口
+
+### 崩溃处理接口
+
+- `CrashHandler`: 崩溃处理管理接口
+- `CrashHandlerImpl`: 崩溃处理具体实现接口
 
 ## 扩展性设计
 
@@ -322,22 +395,43 @@ std::shared_ptr<protocol::ProtocolSession> backup_telemetry_session_;  // 19700 
 - 通过协议接口实现不同通信协议的插拔
 - 支持 TCP、UDP、Redis 等多种通信方式
 
+### 日志系统扩展
+
+- 支持多种日志输出目标（控制台、文件、网络）
+- 支持多种网络协议（TCP、UDP）的日志传输
+- 支持运行时动态调整日志级别
+
+### 崩溃处理扩展
+
+- 支持多种崩溃类型捕获（访问违规、除零错误、栈溢出等）
+- 支持可配置的崩溃信息上报机制
+- 支持与外部监控系统的集成
+
 ## 性能考虑
 
 ### 内存管理
 
 - 使用智能指针管理对象生命周期
 - 通过对象池减少频繁分配/释放
+- 异步日志处理以减少主线程阻塞
 
 ### 并发处理
 
 - 使用线程池处理图像处理任务
 - 通过队列解耦生产和消费过程
+- 异步崩溃处理以避免影响主程序流程
 
 ### 异步操作
 
 - 异步处理 I/O 操作
 - 非阻塞通信实现
+- 异步日志记录以提高性能
+
+### 崩溃处理性能
+
+- 在崩溃时使用最小安全路径
+- 避免在崩溃处理中使用复杂的库函数
+- 快速生成Minidump文件并退出
 
 ## 安全性考虑
 
@@ -350,6 +444,19 @@ std::shared_ptr<protocol::ProtocolSession> backup_telemetry_session_;  // 19700 
 
 - 实现权限管理
 - 数据访问审计
+
+### 崩溃处理安全性
+
+- 在崩溃时使用最小安全路径进行信息上报
+- 避免在崩溃处理中使用可能引发二次崩溃的库函数
+- 使用安全的字符串操作函数
+- 防止递归崩溃处理
+
+### 日志安全性
+
+- 对敏感信息进行过滤或脱敏
+- 支持日志传输加密
+- 控制日志文件的访问权限
 
 ## 测试策略
 

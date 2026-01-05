@@ -62,6 +62,85 @@ CFP (CAPON Frontend Processor) 是一个基于 C++ 的工业视觉检测应用�
 
 ---
 
+## 日志、崩溃处理与IPC通信模块
+
+CFP系统集成了强大的日志记录、崩溃处理和IPC（进程间通信）功能，确保系统稳定性和问题诊断能力。
+
+### 日志模块
+
+- **多级日志系统**: 支持TRACE、DEBUG、INFO、WARN、ERROR、CRITICAL等多级日志记录
+- **多目标输出**: 日志可同时输出到控制台、文件和网络（TCP/UDP）
+- **异步日志**: 使用spdlog异步日志系统，确保高性能
+- **配置化管理**: 通过配置文件动态控制日志级别和输出目标
+- **网络日志传输**: 支持TCP和UDP协议的日志传输到远程服务器
+
+配置示例：
+```ini
+[logging]
+tcp_send_enabled=false
+udp_send_enabled=false
+ipc_send_enabled=false
+ipc_protocol=tcp
+tcp_server_ip=127.0.0.1
+tcp_server_port=8080
+tcp_timeout_ms=3000
+udp_server_ip=127.0.0.1
+udp_server_port=8080
+ipc_server_ip=127.0.0.1
+ipc_server_port=5141
+network_level=err
+```
+
+### 崩溃上传模块
+
+- **自动崩溃检测**: 捕获程序异常和崩溃事件
+- **信号处理**: 捕获SIGSEGV、SIGFPE、SIGILL、SIGABRT等信号
+- **Windows SEH**: 支持Windows结构化异常处理
+- **崩溃信息收集**: 收集异常代码、地址、调用栈等详细信息
+- **MiniDump生成**: 生成崩溃时的内存转储文件用于后续分析
+- **崩溃信息上传**: 通过IPC将崩溃信息发送到监控系统
+
+### IPC接收与异常/崩溃分析上传模块
+
+- **IPC通信**: 支持TCP/UDP协议的进程间通信
+- **崩溃信息传输**: 通过UDP协议将崩溃信息发送到指定IP和端口
+- **异常分析**: 支持详细的异常描述和调用栈分析
+- **安全崩溃上报**: 在崩溃时使用最小安全路径上报信息，避免二次崩溃
+- **PDB匹配检查**: 检查调试符号文件是否与执行文件匹配
+
+### 崩溃处理架构（工业级）
+
+CFP采用工业级崩溃处理架构，将崩溃处理分为客户端和服务器端两个部分：
+
+1. **客户端职责**：
+   - 捕获崩溃事件
+   - 生成Minidump文件
+   - 通过UDP发送最小崩溃信息
+   - 立即安全退出进程
+
+2. **服务器端职责**：
+   - 接收上传的Minidump文件
+   - 使用调试符号（PDB）进行详细分析
+   - 生成崩溃报告
+   - 进行崩溃统计和去重
+
+这种设计确保了在崩溃发生时，客户端能够安全、快速地记录崩溃现场，而详细的分析工作则由服务器在安全环境中完成。详情请参见[DOCS/crash_handling_architecture.md](file:///d:/codespace/CFP/DOCS/crash_handling_architecture.md)。
+
+崩溃处理流程：
+1. 捕获异常/崩溃事件
+2. 收集崩溃详细信息（异常代码、地址、线程ID、进程ID、调用栈）
+3. 生成MiniDump文件
+4. 通过IPC发送最小崩溃信息到监控服务器
+5. 记录崩溃日志
+
+### 崩溃处理API
+
+- `CrashHandler::initialize()`: 初始化崩溃处理系统
+- `CrashHandler::reportFatal()`: 非崩溃路径的致命错误上报
+- `CrashHandler::cleanup()`: 清理崩溃处理资源
+
+---
+
 ## 项目架构与目录结构
 
 ```

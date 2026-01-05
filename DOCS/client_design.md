@@ -60,7 +60,7 @@ class ImageSignalBus {
 
 ### 订阅示例
 
-```cpp
+```
 // 在客户端组件中订阅图像信号
 auto& signalBus = ImageSignalBus::instance();
 signalBus.subscribe("processed_frame", [this](const cv::Mat& img) {
@@ -229,3 +229,103 @@ private:
 - 合理管理图像内存使用
 - 及时释放不再使用的图像数据
 - 避免内存泄漏
+
+## 客户端日志与崩溃处理
+
+### 日志记录机制
+
+客户端集成了统一的日志记录机制，支持多级日志输出：
+
+- **日志级别**: 支持TRACE、DEBUG、INFO、WARN、ERROR、CRITICAL等多级日志
+- **输出目标**: 日志可同时输出到控制台、文件和网络（TCP/UDP）
+- **异步记录**: 使用spdlog异步日志系统，确保高性能
+- **配置化管理**: 通过配置文件动态控制日志级别和输出目标
+
+#### 日志使用示例
+
+```
+// 在客户端组件中使用日志
+#include "logging/CaponLogging.hpp"
+
+void DvpMainWindow::onCameraConnected() {
+    LOG_INFO("相机连接成功: {}", cameraId);
+    
+    if (someWarningCondition) {
+        LOG_WARN("相机 {} 存在警告状态", cameraId);
+    }
+}
+
+void DvpCameraView::onImageProcessingError() {
+    LOG_ERROR("图像处理失败: {}", errorMessage);
+}
+```
+
+### 崩溃处理集成
+
+客户端集成了崩溃处理机制，确保在发生异常时能够：
+
+- 捕获程序崩溃事件
+- 生成崩溃报告
+- 上传崩溃信息到监控服务器
+- 安全退出程序
+
+#### 崩溃处理初始化
+
+```
+// 在客户端启动时初始化崩溃处理
+#include "debug/CrashHandler.hpp"
+
+int main(int argc, char *argv[]) {
+    // 初始化崩溃处理系统
+    CrashHandler::initialize();
+    
+    // ... 其他初始化代码 ...
+    
+    // 应用退出前清理
+    atexit(CrashHandler::cleanup);
+    
+    // ... 应用程序逻辑 ...
+}
+```
+
+### 崩溃信息上报
+
+在客户端运行过程中，除了自动崩溃捕获外，还支持手动上报致命错误：
+
+```
+void DvpCameraManager::onCriticalError(const std::string& errorMsg) {
+    // 记录错误日志
+    LOG_CRITICAL("严重错误: {}", errorMsg);
+    
+    // 上报致命错误
+    CrashHandler::reportFatal(errorMsg.c_str());
+}
+```
+
+### 日志配置
+
+客户端支持通过配置文件管理日志行为：
+
+``ini
+[logging]
+tcp_send_enabled=false
+udp_send_enabled=false
+ipc_send_enabled=true
+ipc_protocol=udp
+tcp_server_ip=127.0.0.1
+tcp_server_port=8080
+udp_server_ip=127.0.0.1
+udp_server_port=8080
+ipc_server_ip=127.0.0.1
+ipc_server_port=5141
+network_level=err
+```
+
+### 安全崩溃处理
+
+客户端遵循工业级崩溃处理原则：
+
+1. **最小安全路径**: 在崩溃时使用最小安全路径进行信息上报
+2. **避免二次崩溃**: 不在崩溃处理中使用可能引发二次崩溃的库函数
+3. **快速退出**: 生成崩溃信息后快速安全退出进程
+4. **信息完整**: 收集完整的崩溃信息（进程ID、线程ID、异常代码、崩溃地址等）

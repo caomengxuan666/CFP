@@ -69,6 +69,16 @@ class CaponLogger {
         spdlog::level::err};  // 只发送ERROR及以上
   };
 
+  struct IpcServerConfig {
+    std::string ip{"127.0.0.1"};
+    uint16_t port{5141};
+    std::string protocol{"udp"};  // 从主程序到IPC的连接
+    spdlog::level::level_enum min_level{spdlog::level::info};
+
+    bool isTcp() const { return protocol == "tcp"; }
+    bool isUdp() const { return protocol == "udp"; }
+  };
+
   // 运行时配置
   struct RuntimeConfig {
     std::atomic<spdlog::level::level_enum> file_level{spdlog::level::info};
@@ -77,15 +87,18 @@ class CaponLogger {
     bool async_enabled{true};
     bool tcp_send_enabled{false};
     bool udp_send_enabled{false};
+    bool ipc_send_enabled{false};
     size_t queue_size{32768};
 
-    // 服务器配置（使用variant来存储TCP或UDP配置）
-    std::variant<TcpServerConfig, UdpServerConfig> server_config{
-        UdpServerConfig{}};
+    // 支持 TCP / UDP / IPC
+    std::variant<TcpServerConfig, UdpServerConfig, IpcServerConfig>
+        server_config{UdpServerConfig{}};
 
     // 获取当前配置类型
     bool isTcpConfig() const { return server_config.index() == 0; }
     bool isUdpConfig() const { return server_config.index() == 1; }
+
+    bool isIpcConfig() const { return server_config.index() == 2; }
 
     // 获取配置引用
     TcpServerConfig& getTcpConfig() {
@@ -94,15 +107,25 @@ class CaponLogger {
     UdpServerConfig& getUdpConfig() {
       return std::get<UdpServerConfig>(server_config);
     }
+
+    IpcServerConfig& getIpcConfig() {
+      return std::get<IpcServerConfig>(server_config);
+    }
     const TcpServerConfig& getTcpConfig() const {
       return std::get<TcpServerConfig>(server_config);
     }
     const UdpServerConfig& getUdpConfig() const {
       return std::get<UdpServerConfig>(server_config);
     }
+
+    const IpcServerConfig& getIpcConfig() const {
+      return std::get<IpcServerConfig>(server_config);
+    }
   };
 
   RuntimeConfig config_;
+  std::atomic<bool> initialized_{false};        // 添加初始化标志
+  std::atomic<bool> first_init_called_{false};  // 标记是否已调用过首次初始化
 
   // 主要的logger（组合所有sink）
   std::shared_ptr<spdlog::logger> main_logger_;
@@ -146,15 +169,21 @@ class CaponLogger {
 
   // 网络配置函数
   void enableTcpLogging(bool enable, const std::string& ip = "127.0.0.1",
-                        uint16_t port = 8080, uint32_t timeout_ms = 3000);
+                        uint16_t port = 5141, uint32_t timeout_ms = 3000);
   void enableUdpLogging(bool enable, const std::string& ip = "127.0.0.1",
-                        uint16_t port = 8080);
+                        uint16_t port = 5141);
+
+  void enableIpcLogging(bool enable, const std::string& ip = "127.0.0.1",
+                        uint16_t port = 5141);
 
   void applyConfig(const config::LoggingConfig& logging_config);
 
   // 获取logger实例
   std::shared_ptr<spdlog::logger> getConsoleLogger() { return console_logger_; }
   std::shared_ptr<spdlog::logger> getMainLogger() { return main_logger_; }
+
+  // 获取IPC配置（只读接口）
+  const IpcServerConfig& getIpcConfig() const { return config_.getIpcConfig(); }
 
   // 强制刷新所有日志
   void flush() {
@@ -167,12 +196,13 @@ class CaponLogger {
   }
 
  private:
-  CaponLogger() { initialize(); }
+  CaponLogger() = default;  // 不再在构造函数中初始化
   ~CaponLogger() { flush(); }
 
   void initialize();
   void setupNetworkSink(std::vector<spdlog::sink_ptr>& sinks);
   void updateLoggerLevels();
+  void reinitialize();  // 重新初始化函数
 
   // 禁用拷贝
   CaponLogger(const CaponLogger&) = delete;
