@@ -137,7 +137,8 @@ target_include_directories(BS_thread_pool INTERFACE
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/BS_THREAD_POOL/include")
 
 # 包含QtAntDesign库
-add_subdirectory(third_party/AntDesign)
+# 暂时不考虑前端机界面设计
+#add_subdirectory(third_party/AntDesign)
 
 # cpp-redis
 add_subdirectory(third_party/cpp_redis)

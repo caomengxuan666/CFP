@@ -19,36 +19,37 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  *
- *  - File: log_server.cpp
+ *  - File: CrashLogger.cpp
  *  - Username: Administrator
  *  - CopyrightYear: 2026
  */
+// CrashLogger.cpp
+#include "logging/CrashLogger.hpp"
 
-#include <iostream>
-#include <string>
+#include <winsock2.h>
 
-#include "asio.hpp"
+#include <string_view>
 
-int main() {
-  try {
-    asio::io_context io_context;
-    asio::ip::udp::socket socket(io_context);
-    asio::ip::udp::endpoint listen_endpoint(asio::ip::udp::v4(), 514);
-    socket.open(listen_endpoint.protocol());
-    socket.set_option(asio::ip::udp::socket::reuse_address(true));
-    socket.bind(listen_endpoint);
+#pragma comment(lib, "ws2_32.lib")
 
-    std::cout << "UDP 日志服务器启动，监听端口 514..." << std::endl;
+namespace crashlog {
 
-    while (true) {
-      char data[8192];
-      asio::ip::udp::endpoint sender_endpoint;
-      size_t length = socket.receive_from(asio::buffer(data), sender_endpoint);
-      std::string log_message(data, length);
-      std::cout << "[接收到日志] " << log_message << std::endl;
-    }
-  } catch (const std::exception& e) {
-    std::cerr << "日志服务器出错: " << e.what() << std::endl;
+void send_udp(std::string_view ip, uint16_t port,
+              std::string_view msg) noexcept {
+  SOCKET sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+  if (sock == INVALID_SOCKET) {
+    return;
   }
-  return 0;
+
+  sockaddr_in addr{};
+  addr.sin_family = AF_INET;
+  addr.sin_port = htons(port);
+  addr.sin_addr.s_addr = inet_addr(ip.data());
+
+  sendto(sock, msg.data(), (int)msg.size(), 0, (sockaddr*)&addr,  // NOLINT
+         sizeof(addr));                                           // NOLINT
+
+  closesocket(sock);
 }
+
+}  // namespace crashlog

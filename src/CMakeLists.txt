@@ -8,15 +8,20 @@ file(GLOB_RECURSE CFP_SOURCE
     "*.cpp"
 )
 
-# 2. 过滤掉所有包含 "/client/" 路径的文件（核心步骤）
+# 2. 过滤掉所有包含 "/client/" 路径的文件
 list(FILTER CFP_SOURCE EXCLUDE REGEX "client/")
+
+# 3.过滤掉所有包含 "/app" 路径的文件
+list(FILTER CFP_SOURCE EXCLUDE REGEX "app/")
+
+# 4.过滤掉所有包含 "/debug" 路径的文件
+list(FILTER CFP_SOURCE EXCLUDE REGEX "debug/")
 
 # 过滤文件,example.cpp
 list(FILTER CFP_SOURCE EXCLUDE REGEX "example.cpp")
 
 # 打印文件列表
 message("CFP_SOURCE: ${CFP_SOURCE}")
-
 
 add_library(CFP STATIC ${CFP_SOURCE})
 
@@ -34,6 +39,7 @@ target_link_libraries(CFP PUBLIC
     ${OpenCV_LIBS}
     CFPUtils
     CaponLogging
+    CaponCrashDebug
 )
 
 if(SAVE_RESULT_IMG)
@@ -56,6 +62,8 @@ if(SAVE_RESULT_IMG)
 endif()
 
 add_subdirectory(utils)
+add_subdirectory(debug)
 add_subdirectory(logging)
+add_subdirectory(app)
 # client暂时不着急制作，需要统一多相机接口之后再慢慢看怎么开发
 #add_subdirectory(client)

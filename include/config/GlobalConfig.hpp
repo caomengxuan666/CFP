@@ -176,11 +176,15 @@ struct LoggingConfig {
   size_t queue_size;
   bool tcp_send_enabled{false};            // 是否启用TCP日志传输
   bool udp_send_enabled{false};            // 是否启用UDP日志传输
+  bool ipc_send_enabled{false};            // 是否启用IPC日志传输
+  std::string ipc_protocol{"tcp"};         // 新增：tcp 或 udp
   std::string tcp_server_ip{"127.0.0.1"};  // TCP服务器IP
   uint16_t tcp_server_port{8080};          // TCP服务器端口
   uint32_t tcp_timeout_ms{3000};           // TCP连接超时时间
   std::string udp_server_ip{"127.0.0.1"};  // UDP服务器IP
   uint16_t udp_server_port{8080};          // UDP服务器端口
+  std::string ipc_server_ip{"127.0.0.1"};  // IPC服务器IP
+  uint16_t ipc_server_port{5141};          // IPC服务器端口
   std::string network_level{"err"};        // 网络传输日志级别
 
   static LoggingConfig load(inicpp::IniManager &ini) {
@@ -228,6 +232,19 @@ struct LoggingConfig {
               ? false
               : static_cast<bool>(logging_section["udp_send_enabled"]);
 
+      config.ipc_send_enabled =
+          logging_section["ipc_send_enabled"].String().empty()
+              ? false
+              : static_cast<bool>(logging_section["ipc_send_enabled"]);
+
+      config.ipc_protocol = logging_section["ipc_protocol"].String().empty()
+                                ? "tcp"
+                                : logging_section["ipc_protocol"].String();
+
+      if (config.ipc_protocol != "tcp" && config.ipc_protocol != "udp") {
+        config.ipc_protocol = "tcp";  // 默认使用TCP
+      }
+
       config.tcp_server_ip = logging_section["tcp_server_ip"].String().empty()
                                  ? "127.0.0.1"
                                  : logging_section["tcp_server_ip"].String();
@@ -254,6 +271,16 @@ struct LoggingConfig {
               : static_cast<uint16_t>(
                     std::stoi(logging_section["udp_server_port"].String()));
 
+      config.ipc_server_ip = logging_section["ipc_server_ip"].String().empty()
+                                 ? "127.0.0.1"
+                                 : logging_section["ipc_server_ip"].String();
+
+      config.ipc_server_port =
+          logging_section["ipc_server_port"].String().empty()
+              ? 5141
+              : static_cast<uint16_t>(
+                    std::stoi(logging_section["ipc_server_port"].String()));
+
       config.network_level = logging_section["network_level"].String().empty()
                                  ? "err"
                                  : logging_section["network_level"].String();
@@ -270,11 +297,15 @@ struct LoggingConfig {
       config.queue_size = 32768;
       config.tcp_send_enabled = false;
       config.udp_send_enabled = false;
+      config.ipc_send_enabled = false;
+      config.ipc_protocol = "tcp";
       config.tcp_server_ip = "127.0.0.1";
       config.tcp_server_port = 8080;
       config.tcp_timeout_ms = 3000;
       config.udp_server_ip = "127.0.0.1";
       config.udp_server_port = 8080;
+      config.ipc_server_ip = "127.0.0.1";
+      config.ipc_server_port = 5141;
       config.network_level = "err";
       return config;
     } catch (...) {
@@ -289,11 +320,15 @@ struct LoggingConfig {
       config.queue_size = 32768;
       config.tcp_send_enabled = false;
       config.udp_send_enabled = false;
+      config.ipc_send_enabled = false;
+      config.ipc_protocol = "tcp";
       config.tcp_server_ip = "127.0.0.1";
       config.tcp_server_port = 8080;
       config.tcp_timeout_ms = 3000;
       config.udp_server_ip = "127.0.0.1";
       config.udp_server_port = 8080;
+      config.ipc_server_ip = "127.0.0.1";
+      config.ipc_server_port = 5141;
       config.network_level = "err";
       return config;
     }
@@ -308,11 +343,16 @@ struct LoggingConfig {
     ini.set("logging", "queue_size", 32768, "异步日志队列大小");
     ini.set("logging", "tcp_send_enabled", false, "是否启用TCP日志传输");
     ini.set("logging", "udp_send_enabled", false, "是否启用UDP日志传输");
+    ini.set("logging", "ipc_send_enabled", false, "是否启用IPC日志传输");
+    ini.set("logging", "ipc_protocol", "tcp",
+            "IPC日志传输协议 (tcp[默认5140], udp[默认5141])");
     ini.set("logging", "tcp_server_ip", "127.0.0.1", "TCP日志服务器IP地址");
     ini.set("logging", "tcp_server_port", 8080, "TCP日志服务器端口");
     ini.set("logging", "tcp_timeout_ms", 3000, "TCP连接超时时间(毫秒)");
     ini.set("logging", "udp_server_ip", "127.0.0.1", "UDP日志服务器IP地址");
     ini.set("logging", "udp_server_port", 8080, "UDP日志服务器端口");
+    ini.set("logging", "ipc_server_ip", "127.0.0.1", "IPC日志服务器IP地址");
+    ini.set("logging", "ipc_server_port", 5141, "IPC日志服务器端口");
     ini.set("logging", "network_level", "err", "网络传输日志级别");
   }
 };

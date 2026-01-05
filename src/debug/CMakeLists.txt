@@ -1,0 +1,3 @@
+add_library(CaponCrashDebug CrashHandler.cpp CrashHandlerImpl.cpp)
+
+target_link_libraries(CaponCrashDebug PUBLIC CaponLogging ws2_32 dbghelp)
