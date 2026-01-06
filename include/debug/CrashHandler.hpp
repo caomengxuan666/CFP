@@ -24,8 +24,7 @@
  *  - CopyrightYear: 2026
  */
 #pragma once
-
-#include <string>
+#include <exception>
 
 class CrashHandlerImpl;
 
@@ -39,6 +38,10 @@ class CrashHandler {
 
   // 非崩溃路径的致命错误上报
   static void reportFatal(const char* msg);
+
+  static void reportCppException(const std::exception& e);
+
+  static void triggerTerminateForTest();
 
   // 清理资源
   static void cleanup();

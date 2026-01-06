@@ -27,6 +27,7 @@
 #include "debug/CrashHandlerImpl.hpp"
 
 #include <atomic>
+#include <cstdio>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -48,9 +49,29 @@ static std::atomic<bool> in_crash_handler{false};
 
 bool CrashHandlerImpl::initialized = false;
 
+std::terminate_handler CrashHandlerImpl::original_terminate_ = nullptr;
+
 CrashHandlerImpl::CrashHandlerImpl() { initializeImpl(); }
 
 CrashHandlerImpl::~CrashHandlerImpl() { SymCleanup(GetCurrentProcess()); }
+
+// ===============================
+// Helper: 安全格式化
+// ===============================
+
+void CrashHandlerImpl::safeFormat(char* buffer, size_t size, const char* format,
+                                  ...) {
+  if (size == 0) {
+    return;
+  }
+
+  va_list args;
+  va_start(args, format);
+  vsnprintf(buffer, size, format, args);
+  va_end(args);
+
+  buffer[size - 1] = '\0';
+}
 
 // ===============================
 // Initialization
@@ -60,6 +81,12 @@ void CrashHandlerImpl::initializeImpl() {
   if (initialized) {
     return;
   }
+
+  // 保存原始terminate处理器
+  original_terminate_ = std::get_terminate();
+
+  // 设置我们的terminate处理器
+  std::set_terminate(&CrashHandlerImpl::terminateHandler);
 
   // signal(SIGSEGV, signalHandler);
   // signal(SIGFPE, signalHandler);
@@ -135,6 +162,48 @@ std::string CrashHandlerImpl::getStackTrace() {
   return out.str();
 }
 
+void CrashHandlerImpl::terminateHandler() {
+  // 防递归
+  if (in_crash_handler.exchange(true)) {
+    // 如果已经在崩溃处理中，调用原始的terminate处理器
+    if (original_terminate_) {
+      original_terminate_();
+    } else {
+      std::abort();
+    }
+    return;
+  }
+
+  // 1. 获取异常信息
+  std::exception_ptr ex = std::current_exception();
+  char message[512] = {0};
+
+  if (ex) {
+    try {
+      std::rethrow_exception(ex);
+    } catch (const std::exception& e) {
+      safeFormat(message, sizeof(message), "C++异常: %s", e.what());
+    } catch (...) {
+      safeFormat(message, sizeof(message), "非标准C++异常");
+    }
+  } else {
+    safeFormat(message, sizeof(message), "std::terminate被调用（无活动异常）");
+  }
+
+  // 2. 记录C++异常
+  logCppException(message);
+
+  // 3. 生成Minidump（如果需要）
+  writeMiniDump(nullptr);
+
+  // 4. 调用原始的terminate处理器
+  if (original_terminate_) {
+    original_terminate_();
+  } else {
+    std::abort();
+  }
+}
+
 // ===============================
 // Signal Handler (极限安全路径)
 // ===============================
@@ -158,7 +227,24 @@ void CrashHandlerImpl::logCrashDetailedSEH(PEXCEPTION_POINTERS p) {
   const DWORD code = p->ExceptionRecord->ExceptionCode;
   const void* addr = p->ExceptionRecord->ExceptionAddress;
 
-  std::string desc = getExceptionDescription(code);
+  std::string desc;
+  if (code == 0xE06D7363) {
+    // MSVC C++ 异常
+    auto ex = std::current_exception();
+    if (ex) {
+      try {
+        std::rethrow_exception(ex);
+      } catch (const std::exception& e) {
+        desc = std::string("C++异常: ") + e.what();
+      } catch (...) {
+        desc = "C++异常: 非标准异常";
+      }
+    } else {
+      desc = "C++异常: 无活动异常";
+    }
+  } else {
+    desc = getExceptionDescription(code);
+  }
   std::string stack = getStackTrace();
 
   LOG_CRITICAL(R"(\n=== 程序崩溃 ===
@@ -260,13 +346,32 @@ void CrashHandlerImpl::sendCrashMinimalSEH(PEXCEPTION_POINTERS p) {
   char buf[512];
 
   if (p && p->ExceptionRecord) {
-    std::string desc =
-        getExceptionDescription(p->ExceptionRecord->ExceptionCode);
+    DWORD code = p->ExceptionRecord->ExceptionCode;
+    std::string desc;
+    if (code == 0xE06D7363) {
+      auto ex = std::current_exception();
+      if (ex) {
+        try {
+          std::rethrow_exception(ex);
+
+        } catch (const std::exception& e) {
+          desc = std::string("C++异常: ") + e.what();
+
+        } catch (...) {
+          desc = "C++异常: 非标准异常";
+        }
+
+      } else {
+        desc = "C++异常: 无活动异常";
+      }
+
+    } else {
+      desc = getExceptionDescription(code);
+    }
 
     _snprintf_s(buf, sizeof(buf), _TRUNCATE,
                 "CRASH pid=%lu tid=%lu code=0x%08X (%s) addr=%p",
-                GetCurrentProcessId(), GetCurrentThreadId(),
-                p->ExceptionRecord->ExceptionCode, desc.c_str(),
+                GetCurrentProcessId(), GetCurrentThreadId(), code, desc.c_str(),
                 p->ExceptionRecord->ExceptionAddress);
   } else {
     _snprintf_s(buf, sizeof(buf), _TRUNCATE,
@@ -307,6 +412,64 @@ bool CrashHandlerImpl::isPdbMatched() {
 // ===============================
 // Exception Description
 // ===============================
+
+void CrashHandlerImpl::logCppException(const char* message) {
+  if (!message) {
+    return;
+  }
+
+  // 构建详细崩溃信息
+  char buffer[1024];
+  safeFormat(buffer, sizeof(buffer),
+             "=== C++异常崩溃 ===\n"
+             "异常: %s\n"
+             "时间: %s %s\n"
+             "线程ID: %lu\n"
+             "进程ID: %lu\n",
+             message, __DATE__, __TIME__, GetCurrentThreadId(),
+             GetCurrentProcessId());
+  // 使用安全的日志记录
+  static const auto& ipc_cfg = CaponLogger::instance().getIpcConfig();
+
+  LOG_CRASH_RAW(ipc_cfg.ip, ipc_cfg.port, buffer);
+  // 同时写入本地文件（双重保险）
+  SYSTEMTIME st;
+  GetLocalTime(&st);
+
+  char filename[256];
+  safeFormat(filename, sizeof(filename),
+             "cpp_crash_%04d%02d%02d_%02d%02d%02d.txt", st.wYear, st.wMonth,
+             st.wDay, st.wHour, st.wMinute, st.wSecond);
+
+  HANDLE hFile = CreateFileA(filename, GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
+                             FILE_ATTRIBUTE_NORMAL, nullptr);
+
+  if (hFile != INVALID_HANDLE_VALUE) {
+    DWORD written;
+    WriteFile(hFile, buffer, static_cast<DWORD>(strlen(buffer)), &written,
+              nullptr);
+
+    // 添加调用栈
+    std::string stack = getStackTrace();
+    WriteFile(hFile, "\n调用栈:\n", 8, &written, nullptr);
+    WriteFile(hFile, stack.c_str(), static_cast<DWORD>(stack.length()),
+              &written, nullptr);
+
+    CloseHandle(hFile);
+  }
+}
+
+void CrashHandlerImpl::logCppException(const std::exception& e) {
+  logCppException(e.what());
+}
+
+#ifndef NTSTATUS
+typedef long NTSTATUS;  // NOLINT
+#endif
+
+#ifndef STATUS_POSSIBLE_DEADLOCK
+#define STATUS_POSSIBLE_DEADLOCK ((NTSTATUS)0xC0000194L)
+#endif
 
 std::string CrashHandlerImpl::getExceptionDescription(DWORD exceptionCode) {
   switch (exceptionCode) {
@@ -354,6 +517,12 @@ std::string CrashHandlerImpl::getExceptionDescription(DWORD exceptionCode) {
       return "单步执行";
     case EXCEPTION_STACK_OVERFLOW:
       return "栈溢出";
+    case STILL_ACTIVE:
+      return "进程仍在活动";
+    case CONTROL_C_EXIT:
+      return "Control+C退出";
+    case static_cast<DWORD>(EXCEPTION_POSSIBLE_DEADLOCK):
+      return "可能的死锁";
     default:
       return "未知异常";
   }

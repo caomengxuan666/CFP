@@ -26,8 +26,8 @@
 // asio must come before windows.h
 #include <windows.h>
 
-#include "spdlog/spdlog.h"
-//we must include spdlog before concrete module
+#include "spdlog/spdlog.h"  //NOLINT
+// we must include spdlog before concrete module
 #include "spdlog/sinks/udp_sink.h"
 // NOLINTEND
 
@@ -160,7 +160,7 @@ int _tmain(int argc, TCHAR* argv[]) {
   }
 
   SERVICE_TABLE_ENTRY serviceTable[] = {
-      {(LPTSTR)SERVICE_NAME, (LPSERVICE_MAIN_FUNCTION)ServiceMain},
+      {(LPTSTR)SERVICE_NAME, (LPSERVICE_MAIN_FUNCTION)ServiceMain},  // NOLINT
       {nullptr, nullptr}};
 
   if (!StartServiceCtrlDispatcher(serviceTable)) {

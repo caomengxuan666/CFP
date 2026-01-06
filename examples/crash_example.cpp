@@ -28,6 +28,7 @@
 
 #include <chrono>
 #include <iostream>
+#include <string>
 #include <thread>
 
 #include "config/GlobalConfig.hpp"
@@ -70,7 +71,18 @@ void testCppException() {
   std::this_thread::sleep_for(std::chrono::seconds(3));
 
   LOG_INFO("即将触发C++异常...");
-  throw std::runtime_error("测试C++异常 - 这应该被崩溃处理器捕获并记录");
+
+  // 方法1：直接抛出（会调用terminate处理器）
+  // throw std::runtime_error("测试C++异常");
+
+  // 方法2：手动记录（如果要在catch中处理）
+  try {
+    throw std::runtime_error("测试异常");
+  } catch (const std::exception& e) {
+    // 手动记录异常，然后重新抛出
+    CrashHandler::reportCppException(e);
+    throw;
+  }
 }
 
 void testAbort() {
@@ -258,9 +270,11 @@ int main(int argc, char* argv[]) {
         } catch (const std::exception& e) {
           std::cout << "\n测试过程中捕获到C++异常: " << e.what() << std::endl;
           std::cout << "此异常已被崩溃处理器记录并发送到IPC。" << std::endl;
+          throw e;
         } catch (...) {
           std::cout << "\n测试过程中捕获到未知异常" << std::endl;
           std::cout << "此异常已被崩溃处理器记录并发送到IPC。" << std::endl;
+          throw;
         }
 
         if (choice >= 1 && choice <= 8) {
@@ -277,13 +291,13 @@ int main(int argc, char* argv[]) {
         }
       }
     }
-
     // 清理（只有正常退出才会执行到这里）
     CrashHandler::cleanup();
     return 0;
 
   } catch (const std::exception& e) {
     std::cerr << "程序启动失败: " << e.what() << std::endl;
+    throw e;
     return 1;
   }
 }

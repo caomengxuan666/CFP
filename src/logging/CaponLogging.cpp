@@ -121,7 +121,8 @@ void CaponLogger::reinitialize() {
     spdlog::drop(console_logger_->name());
     console_logger_.reset();
   }
-
+  // 标记为未初始化
+  initialized_.store(false);
   // 重新初始化
   initialize();
 }
