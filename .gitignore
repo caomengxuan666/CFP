@@ -7,3 +7,7 @@ out/
 *.pyc
 *.pdf
 *.zip
+/src/app/crash-server/target
+/src/app/crash-server/uploads
+*.dmp
+*.lock

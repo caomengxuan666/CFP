@@ -1,0 +1,22 @@
+[package]
+name = "crash_handler_server"
+version = "0.1.0"
+edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "A lightweight crash information collection server for receiving minidump files"
+
+[dependencies]
+axum = { version = "0.7", features = ["multipart"] }
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+rusqlite = { version = "0.30", features = ["bundled"] }
+uuid = { version = "1.0", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+config = "0.14"
+log = "0.4"
+env_logger = "0.11"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "fs"] }
+anyhow = "1.0"
+tokio-util = { version = "0.7", features = ["io"] }
