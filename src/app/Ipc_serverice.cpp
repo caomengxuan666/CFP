@@ -26,8 +26,9 @@
 // asio must come before windows.h
 #include <windows.h>
 
-#include "spdlog/sinks/udp_sink.h"
 #include "spdlog/spdlog.h"
+//we must include spdlog before concrete module
+#include "spdlog/sinks/udp_sink.h"
 // NOLINTEND
 
 #define SERVICE_NAME _T("IpcRelayService")
