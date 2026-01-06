@@ -26,8 +26,6 @@
 
 #include "debug/CrashHandler.hpp"
 
-#include <string>
-
 #include "debug/CrashHandlerImpl.hpp"
 #include "logging/CaponLogging.hpp"
 #include "logging/CrashLogger.hpp"
@@ -50,6 +48,21 @@ void CrashHandler::reportFatal(const char* msg) {
   const auto& ipc_cfg = CaponLogger::instance().getIpcConfig();
   LOG_CRASH_RAW(ipc_cfg.ip, ipc_cfg.port, msg);
 }
+
+void CrashHandler::reportCppException(const std::exception& e) {
+  if (impl) {
+    // 使用安全的内部实现
+    CrashHandlerImpl::logCppException(e);
+  } else {
+    // 如果崩溃处理器还没初始化，使用简单的输出
+    OutputDebugStringA("C++异常（崩溃处理器未初始化）: ");
+    OutputDebugStringA(e.what());
+    OutputDebugStringA("\n");
+  }
+}
+
+// 添加：手动触发terminate（用于测试）
+void CrashHandler::triggerTerminateForTest() { std::terminate(); }
 void CrashHandler::cleanup() {
   if (impl) {
     delete impl;

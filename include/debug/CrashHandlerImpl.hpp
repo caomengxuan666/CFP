@@ -37,7 +37,6 @@
 
 #include <windows.h>
 
-#include <csignal>
 #include <string>
 
 // Windows minidump支持
@@ -47,6 +46,8 @@
 class CrashHandlerImpl {
  private:
   static bool initialized;
+  // 保存原始terminate处理器
+  static std::terminate_handler original_terminate_;
 
  public:
   // 构造函数和析构函数
@@ -58,6 +59,9 @@ class CrashHandlerImpl {
 
   // 信号处理器
   static void signalHandler(int signal);
+
+  // C++异常处理器
+  static void terminateHandler();
 
   // Windows 未处理异常过滤器
   static LONG WINAPI
@@ -78,6 +82,11 @@ class CrashHandlerImpl {
   static void sendCrashMinimalSEH(PEXCEPTION_POINTERS p);
 
   static void logCrashDetailedSEH(PEXCEPTION_POINTERS p);
+
+  // 记录C++异常
+  static void logCppException(const char* message);
+  static void logCppException(const std::exception& e);
+  static void safeFormat(char* buffer, size_t size, const char* format, ...);
 
   // 检查PDB是否匹配
   static bool isPdbMatched();
