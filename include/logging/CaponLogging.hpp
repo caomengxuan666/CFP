@@ -139,6 +139,8 @@ class CaponLogger {
     return instance;
   }
 
+  void cleanup();
+
   // 日志记录函数
   template <typename... Args>
   void logInternal(spdlog::level::level_enum level,

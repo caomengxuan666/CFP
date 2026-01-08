@@ -30,8 +30,13 @@
 #include "logging/CaponLogging.hpp"
 
 namespace logging {
-
-class LoggingConfigManager {
+// 直接继承了观察者接口
+// 因为这里的日志类的重新应用的接口是完备的所以非常方便
+/**
+ * @brief 日志的管理器类,继承了观察者接口
+ * @note 使用的时候可以直接传入globalConfig对象,他会自动更新loggingConfig到Logger中
+ */
+class LoggingConfigManager : public config::ConfigObserver {
  public:
   static LoggingConfigManager& getInstance() {
     static LoggingConfigManager instance;
@@ -44,6 +49,11 @@ class LoggingConfigManager {
 
   void applyGlobalConfig(const config::GlobalConfig& globalConfig) {
     applyLoggingConfig(globalConfig.logging_settings);
+  }
+
+  // 实现 ConfigObserver 接口
+  void onConfigReloaded(const config::GlobalConfig& new_config) override {
+    applyGlobalConfig(new_config);
   }
 
  private:

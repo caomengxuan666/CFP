@@ -1,5 +1,5 @@
 /*
- *  Copyright © 2025-2026 [caomengxuan666]
+ *  Copyright © 2026 [caomengxuan666]
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
  *  of this software and associated documentation files (the “Software”), to
@@ -19,31 +19,39 @@
  * FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
  * IN THE SOFTWARE.
  *
- *  - File: CameraCapture.hpp
+ *  - File: EventStrategies.hpp
  *  - Username: Administrator
- *  - CopyrightYear: 2025-2026
+ *  - CopyrightYear: 2026
  */
-
 #pragma once
+#include "cameras/Dvp/DvpEventManager.hpp"
+#include "cameras/Ikap/IkapEventManager.hpp"
+#include "logging/CaponLogging.hpp"
 
-#include <memory>
+// =============== 公共策略 ===============
+struct TelemetryStrategy {
+  template <typename Context>
+  static void execute(const Context& ctx) {
+    // 上报遥测数据到服务器
+  }
+};
 
-#include "concurrentqueue.h"
-#include "protocol/messages.hpp"
-class FrameProcessor;
-struct CameraConfig;  // 声明CameraConfig结构
-class CapturedFrame;
+// =============== IKAP 专属策略 ===============
+struct IkapReconnectStrategy {
+  static void execute(const IkapEventContext& ctx) {
+    if (ctx.type == IkapEventType::DeviceRemove) {
+      LOG_WARN("IKAP Camera Disconnected! Reconnecting...");
+      // TODO(cmx)
+    }
+  }
+};
 
-class CameraCapture {
- public:
-  virtual ~CameraCapture() = default;
-  virtual bool start() = 0;
-  virtual bool start(const FrameProcessor&) = 0;
-  virtual void stop() = 0;
-  virtual void set_config(const CameraConfig&) = 0;
-  virtual void set_roi(int x, int y, int width, int height) = 0;
-  virtual moodycamel::ConcurrentQueue<std::shared_ptr<CapturedFrame>>&
-  get_frame_queue() = 0;
-  virtual protocol::FrontendStatus get_status() const = 0;
-  virtual void add_frame_processor(const FrameProcessor& processor) = 0;
+// =============== DVP 专属策略 ===============
+struct DvpReconnectStrategy {
+  static void execute(const DvpEventContext& ctx) {
+    if (ctx.type == DvpEventType::FrameTimeout ||
+        ctx.type == DvpEventType::FrameLost) {
+      LOG_WARN("DVP Frame Issue!");
+    }
+  }
 };

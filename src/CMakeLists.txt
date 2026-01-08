@@ -27,7 +27,6 @@ add_library(CFP STATIC ${CFP_SOURCE})
 
 target_include_directories(CFP PUBLIC ${PROJECT_SOURCE_DIR}/third_party/cpp_redis/includes)
 target_include_directories(CFP PUBLIC ${PROJECT_SOURCE_DIR}/third_party/cpp_redis/tacopie/includes)
-
 target_link_libraries(CFP PUBLIC 
     DVP2::DVPCamera 
     DVP2::dvpir

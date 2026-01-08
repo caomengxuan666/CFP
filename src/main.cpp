@@ -25,17 +25,16 @@
  */
 
 // Copyright (c) 2025 caomengxuan666
+#include "cameras/CameraCapture.hpp"
 #include "logging/CaponLogging.hpp"
 #ifndef _WIN32_WINNT
 #define _WIN32_WINNT 0x0601
 #endif
 
-#include <atomic>
 #include <iostream>
 #include <memory>
 #include <string>
 #include <thread>
-#include <utility>
 
 // 必须先包含 asio
 // #include "asio.hpp"
@@ -46,12 +45,9 @@
 #include "algo/AlgoBase.hpp"
 #include "algo/HoleDetection.hpp"
 #include "business/BusinessManager.hpp"
-// #include "cameras/Dvp/DvpCameraBuilder.hpp"
 #include "cameras/CameraFactory.hpp"
-#include "cameras/Ikap/IkapCameraBuilder.hpp"
-#include "cameras/Ikap/IkapCameraCapture.hpp"
+#include "cameras/EventHandlers.hpp"
 #include "cameras/ImageSignalBus.hpp"
-#include "config/CameraConfig.hpp"
 #include "config/ConfigManager.hpp"
 #include "logging/LoggingConfigManager.hpp"
 #include "utils/get_local_ip.h"
@@ -63,6 +59,9 @@ int main() {
     logging::LoggingConfigManager::getInstance().applyGlobalConfig(
         global_config);
     LOG_INFO("日志初始化完成");
+
+    // 初始化相机其他事件默认的所有handlers
+    register_all_handlers();
     // 1. 创建两个独立的 io_context
     asio::io_context main_io_ctx;    // 用于主服务器（生产环境）
     asio::io_context backup_io_ctx;  // 用于副服务器（调试环境）
@@ -87,65 +86,48 @@ int main() {
         business_mgr
             .get_backup_report_session();  // 可能为空，如果未配置备份服务器
 
-    // 初始化算法
+    // 初始配置管理器 (可以在运行时从配置文件直接动态更新算法)
     auto& config_manager = config::ConfigManager::instance();
     config_manager.start();
 
-    // 直接用config创建相机工厂
-    // TODO(cmx) 后续可以考虑在 @create_camera
-    // 加一个直接返回shared_ptr的接口减少转换开销
-    auto uni_camera = create_camera(
-        CameraBrand::IKap, "cam1",
-        CameraConfig{
-            // 这里可以初始换配置文件
-            // .trigger_mode=true
-            // TODO(cmx) 后续我们需要在 @GlobalConfig 中添加相机的配置文件
-            // 这样就可以达到工厂自动应用的效果
-            // 同时我们也应该在 @CameraManager
-            // 中增加这个工厂接口,利用配置文件直接创建相机
-        });
-    std::shared_ptr<CameraCapture> camera = std::move(uni_camera);
+    inicpp::IniManager ini(config::get_default_config_path());
+    auto cameras =
+        create_cameras_from_config(global_config.camera_entries, ini);
+
+    // 启动相机
+    for (auto& cam : cameras) {
+      cam->start();
+    }
+
+    // 未来这里的算法取决于配置文件，从里面读取并且创建
     auto holeDetection = config_manager.create_algorithm<algo::HoleDetection>();
+    algo::AlgoAdapter adapter(holeDetection);  // 栈上对象，持有 shared_ptr
+    // AlgoAdapter
 
-    std::atomic<bool> camera_running{false};
-
-    auto create_camera = [&holeDetection]() {
-      return IkapCameraBuilder::fromUserId("123")
-          .onFrame(algo::AlgoAdapter(holeDetection))
-          .build();
-    };
-
-    auto start_camera = [&camera, &camera_running, &create_camera]() {
-      if (camera_running.exchange(true)) {
-        return;
+    // 延迟启动算法的lambda,可以做到开始信号来了之后在绑定
+    auto start_camera_algo = [cameras, adapter]() {
+      for (const auto& cam : cameras) {
+        cam->add_frame_processor(adapter);
       }
-      camera = create_camera();
-      if (!camera || !camera->start()) {
-        LOG_ERROR("Camera failed to start!");
-        camera_running = false;
-        return;
-      }
-      LOG_INFO("Camera started successfully!");
     };
 
     // 设置开始信号回调 - 适配BusinessManager的回调参数类型
-    // TODO(cmx)
-    // 这里的业务逻辑实际上是启动和应用具体的算法，相机在此之前就要被启动了
-    // 所以每一个相机都要有一个start_camera接口，确保没有算法实例的时候都能成功启动相机
-    // 至于算法可以在收到这个信号之后延迟来绑定
     business_mgr.set_start_callback(
-        [start_camera](const std::string& roll_id) { start_camera(); });
+        [start_camera_algo](const std::string& roll_id) {
+          start_camera_algo();
+        });
 
     // 特征数据回调 - 同时发送到主服务器和备份服务器
     ImageSignalBus::instance().subscribe_feature(
         "hole_features", [report_session, backup_report_session,
-                          &camera](const ImageSignalBus::FeatureData& data) {
-          if (!report_session || !camera) {
+                          &cameras](const ImageSignalBus::FeatureData& data) {
+          if (!report_session || !cameras.empty()) {
             return;
           }
 
           std::shared_ptr<CapturedFrame> frame;
-          if (camera->get_frame_queue().try_dequeue(frame) && frame) {
+          // TODO(cmx) 目前是单相机，就直接用第一个相机采集发送了
+          if (cameras[0]->get_frame_queue().try_dequeue(frame) && frame) {
             protocol::FeatureReport report;
             report.roll_id = data.roll_id;
             report.features = data.features;
@@ -178,13 +160,11 @@ int main() {
     // 不需要手动创建 telemetry_thread
 
     // 状态发送线程，同时发送给主服务器和备份服务器
-    std::thread status_thread([report_session, backup_report_session, &camera,
-                               &camera_running]() {
+    std::thread status_thread([report_session, backup_report_session,
+                               &cameras]() {
       while (true) {
-        if (camera_running && camera) {
-          // 将camera转换为具体的类
-          camera = std::dynamic_pointer_cast<IkapCameraCapture>(camera);
-          auto status = camera->get_status();
+        if (cameras[0]) {
+          auto status = cameras[0]->get_status();
 
           // 发送到主服务器
           report_session->async_send_status(status, [](std::error_code ec) {
@@ -220,8 +200,8 @@ int main() {
     std::cin.get();
 
     // 清理
-    if (camera) {
-      camera->stop();
+    if (cameras[0]) {
+      cameras[0]->stop();
     }
     main_guard.reset();
     backup_guard.reset();
