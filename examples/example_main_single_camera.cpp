@@ -29,9 +29,7 @@
 #define _WIN32_WINNT 0x0601
 #endif
 
-#include <atomic>   // 新增：用于退出标志
-#include <chrono>   // 新增：用于休眠
-#include <csignal>  // 新增：用于捕获退出信号
+#include <chrono>  // 新增：用于休眠
 #include <iostream>
 #include <memory>
 #include <stdexcept>
@@ -98,7 +96,7 @@ int main() {
       camera0->stop();
     }
 
-    // ========== 按Issue #1173 要求的清理顺序 ==========
+    // ========== 按Spdlog Issue #1173 要求的清理顺序 ==========
     // 1. 先刷新日志（确保所有日志入队）
     CaponLogger::instance().flush();
     // 2. 销毁所有logger（从注册表移除，释放对线程池的weak_ptr引用）

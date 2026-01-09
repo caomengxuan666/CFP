@@ -35,16 +35,15 @@
 #include <utility>
 #include <vector>
 
-#include "boost/pfr.hpp"
 #include "config/CameraConfig.hpp"
 #include "config/ConfigMacros.hpp"
 #include "config/ConfigObserver.hpp"
 #include "utils/executable_path.h"
 #include "utils/inicpp.hpp"
 
-
 // ===========================================================================
 // 我们提供的配置项
+// 这个部分额外可以给python提供CODEGEN解析
 // 点击这里快速跳转到具体的配置项部分
 CONFIG_FORWARD_DECLARE(GlobalConfig)            // 全局配置
 CONFIG_FORWARD_DECLARE(HoleDetectionConfig)     // 孔洞检测配置项
@@ -194,6 +193,30 @@ struct LoggingConfig {
   std::string ipc_server_ip{"127.0.0.1"};  // IPC服务器IP
   uint16_t ipc_server_port{5141};          // IPC服务器端口
   std::string network_level{"err"};        // 网络传输日志级别
+
+  bool operator==(const LoggingConfig &other) const {
+    return file_level == other.file_level &&
+           console_level == other.console_level &&
+           async_enabled == other.async_enabled &&
+           queue_size == other.queue_size &&
+           tcp_send_enabled == other.tcp_send_enabled &&
+           udp_send_enabled == other.udp_send_enabled &&
+           ipc_send_enabled == other.ipc_send_enabled &&
+           ipc_protocol == other.ipc_protocol &&
+           tcp_server_ip == other.tcp_server_ip &&
+           tcp_server_port == other.tcp_server_port &&
+           tcp_timeout_ms == other.tcp_timeout_ms &&
+           udp_server_ip == other.udp_server_ip &&
+           udp_server_port == other.udp_server_port &&
+           ipc_server_ip == other.ipc_server_ip &&
+           ipc_server_port == other.ipc_server_port &&
+           network_level == other.network_level;
+  }
+
+  // 不等判断（方便使用）
+  bool operator!=(const LoggingConfig &other) const {
+    return !(*this == other);
+  }
 
   static LoggingConfig load(inicpp::IniManager &ini) {
     try {
@@ -942,7 +965,7 @@ class ConfigLoader {
               // ========== 优化：将file_time_type转为可读时间 ==========
               // 修复核心：通用的file_time_type转time_t方法
               std::time_t curr_time_t = to_time_t(curr_time);
-              std::string curr_time_str = ctime(&curr_time_t);
+              std::string curr_time_str = ctime(&curr_time_t);  // NOLINT
               // 去掉换行符
               if (!curr_time_str.empty() && curr_time_str.back() == '\n') {
                 curr_time_str.pop_back();

@@ -121,8 +121,8 @@ std::string CrashHandlerImpl::getStackTrace() {
 
   out << "调用栈 (" << frames << " 帧):\n";
 
-  SYMBOL_INFO* symbol = reinterpret_cast<SYMBOL_INFO*>(
-      calloc(sizeof(SYMBOL_INFO) + 256, 1));  // NOLINT
+  SYMBOL_INFO* symbol = reinterpret_cast<SYMBOL_INFO*>(  // NOLINT
+      calloc(sizeof(SYMBOL_INFO) + 256, 1));             // NOLINT
   if (!symbol) {
     return "符号内存分配失败\n";
   }

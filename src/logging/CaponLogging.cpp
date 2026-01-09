@@ -57,11 +57,14 @@ void CaponLogger::initialize() {
   // 统一的日志格式
   std::string common_pattern = "[%Y-%m-%d %H:%M:%S.%e] [%l] [%t] [%s:%#] %v";
 
+  // 控制台的加上颜色
+  std::string color_pattern = "%^[%Y-%m-%d %H:%M:%S.%e] [%l] [%t] [%s:%#]%$ %v";
   // 1. 控制台sink（彩色输出）
-  auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-  console_sink->set_level(config_.console_level.load());
-  console_sink->set_pattern(common_pattern);
 
+  auto console_sink =
+      std::make_shared<spdlog::sinks::wincolor_stdout_sink_mt>();
+  console_sink->set_level(config_.console_level.load());
+  console_sink->set_pattern(color_pattern);
   // 创建单独的console logger
   console_logger_ =
       std::make_shared<spdlog::logger>("capon_console", console_sink);
@@ -398,6 +401,7 @@ void CaponLogger::enableIpcLogging(bool enable, const std::string& ip,
 }
 
 void CaponLogger::applyConfig(const config::LoggingConfig& logging_config) {
+  current_logging_config = logging_config;
   // 将字符串转换为spdlog级别
   spdlog::level::level_enum file_level =
       spdlog::level::from_str(logging_config.file_level);

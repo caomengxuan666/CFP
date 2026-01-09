@@ -28,10 +28,14 @@
 #include "redis/RedisClient.hpp"
 
 #include <condition_variable>
-#include <cpp_redis/cpp_redis>
 #include <iostream>
+#include <memory>
 #include <mutex>
-#include <tacopie/tacopie>
+#include <string>
+#include <utility>
+
+#include "cpp_redis/cpp_redis"
+#include "tacopie/tacopie"
 
 namespace redis {
 
@@ -41,8 +45,12 @@ RedisClient::RedisClient(asio::io_context& io_ctx)
       subscriber_(std::make_unique<cpp_redis::subscriber>()) {}
 
 RedisClient::~RedisClient() {
-  if (client_) client_->disconnect(true);
-  if (subscriber_) subscriber_->disconnect(true);
+  if (client_) {
+    client_->disconnect(true);
+  }
+  if (subscriber_) {
+    subscriber_->disconnect(true);
+  }
 }
 
 void RedisClient::connect(const std::string& host, uint16_t port) {
@@ -73,7 +81,9 @@ void RedisClient::connect(const std::string& host, uint16_t port) {
 
 void RedisClient::publish(const std::string& channel,
                           const std::string& message) {
-  if (!client_ || !client_->is_connected()) return;
+  if (!client_ || !client_->is_connected()) {
+    return;
+  }
 
   client_->publish(channel, message);
   client_->commit();  // v4 使用 commit() 提交命令
@@ -81,7 +91,9 @@ void RedisClient::publish(const std::string& channel,
 
 void RedisClient::subscribe(const std::string& channel,
                             MessageCallback callback) {
-  if (!subscriber_ || !subscriber_->is_connected()) return;
+  if (!subscriber_ || !subscriber_->is_connected()) {
+    return;
+  }
 
   // 存储回调（需线程安全）
   static std::mutex cb_mutex;
@@ -108,7 +120,9 @@ void RedisClient::subscribe(const std::string& channel,
 
 void RedisClient::psubscribe(const std::string& pattern,
                              MessageCallback callback) {
-  if (!subscriber_ || !subscriber_->is_connected()) return;
+  if (!subscriber_ || !subscriber_->is_connected()) {
+    return;
+  }
 
   static std::mutex cb_mutex;
   static std::function<void(const std::string&, const std::string&)> global_pcb;

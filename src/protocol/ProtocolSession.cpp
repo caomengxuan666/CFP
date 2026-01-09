@@ -42,8 +42,6 @@ ProtocolSession::ProtocolSession(
       config_transport_(std::move(config_transport)),
       report_transport_(std::move(report_transport)) {}
 
-ProtocolSession::~ProtocolSession() {}
-
 void ProtocolSession::async_connect(
     const std::string& ip, uint16_t port,
     std::function<void(std::error_code)> callback) {

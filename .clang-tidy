@@ -26,7 +26,7 @@ Checks: '-*,
         cppcoreguidelines-pro-type-reinterpret-cast,
         misc-unconventional-assign-operator'
 WarningsAsErrors: ''
-HeaderFilterRegex: ''
+HeaderFilterRegex: '^((?!third_party).)*$'
 CheckOptions:
   - key:             modernize-redundant-void-arg
     value:           'true' 

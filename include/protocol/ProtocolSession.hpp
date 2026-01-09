@@ -56,7 +56,7 @@ class ProtocolSession {
   ProtocolSession(std::unique_ptr<ICodec> codec,
                   std::unique_ptr<ITransportAdapter> config_transport,
                   std::unique_ptr<ITransportAdapter> report_transport);
-  ~ProtocolSession();
+  ~ProtocolSession() = default;
 
   void async_connect(const std::string& ip, uint16_t port,
                      std::function<void(std::error_code)> callback);

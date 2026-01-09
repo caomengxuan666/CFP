@@ -440,8 +440,10 @@ static std::vector<HoleInfo> merge_close_holes(
 
       // 计算实际尺寸
       if (config.enable_real_world_calculation) {
-        merged_hole.real_width = merged_width * config.pixel_to_mm_width;
-        merged_hole.real_height = merged_height * config.pixel_to_mm_height;
+        merged_hole.real_width =
+            merged_width * config.pixel_to_mm_width;  // NOLINT
+        merged_hole.real_height =
+            merged_height * config.pixel_to_mm_height;  // NOLINT
         merged_hole.real_area =
             total_area * config.pixel_to_mm_width * config.pixel_to_mm_height;
         for (size_t idx : close_indices) {
@@ -565,12 +567,12 @@ static std::vector<HoleInfo> extract_holes(
     if (config.enable_real_world_calculation) {
       hole.real_diameter =
           equiv_diam * config.pixel_to_mm_width;  // 使用宽度转换因子计算直径
-      hole.real_area = area * config.pixel_to_mm_width *
-                       config.pixel_to_mm_height;  // 计算实际面积
+      hole.real_area = area * config.pixel_to_mm_width *  // NOLINT
+                       config.pixel_to_mm_height;         // 计算实际面积
       hole.real_width =
-          w * config.pixel_to_mm_width;  // 使用固定转换因子计算实际宽度
+          w * config.pixel_to_mm_width;  // NOLINT 使用固定转换因子计算实际宽度
       hole.real_height =
-          h * config.pixel_to_mm_height;  // 使用固定转换因子计算实际高度
+          h * config.pixel_to_mm_height;  // NOLINT 使用固定转换因子计算实际高度
     }
     hole_data.emplace_back(hole);
   }
@@ -734,7 +736,8 @@ static std::pair<Mat, Mat> create_visualizations(
 
           std::stringstream dist_stream;
           if (config.enable_real_world_calculation) {
-            double real_dist = vertical_distance * config.pixel_to_mm_height;
+            double real_dist =
+                vertical_distance * config.pixel_to_mm_height;  // NOLINT
             dist_stream << fixed << setprecision(2) << real_dist << "mm";
           } else {
             dist_stream << vertical_distance << "px";
@@ -861,7 +864,8 @@ static void process_single_image_impl(const Mat& processed_image,
   }
 
   std::fill(data.special_images.begin(), data.special_images.end(), 0.0f);
-  for (size_t i = 0; i < std::min(merged_hole_data.size(), size_t(10));
+  for (size_t i = 0;
+       i < std::min(merged_hole_data.size(), static_cast<size_t>(10));
        ++i) {  // NOLINT
     if (i * 2 + 1 < data.special_images.size()) {
       data.special_images[i * 2] =

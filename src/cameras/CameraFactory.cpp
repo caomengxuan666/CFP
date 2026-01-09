@@ -286,8 +286,8 @@ std::vector<std::shared_ptr<CameraCapture>> create_cameras_from_config(
         if (ptr) {
           cameras.emplace_back(std::move(ptr));
         } else {
-          //throw std::runtime_error("Failed to create camera [" +
-          //                         camera_entries[i].id + "]");
+          // throw std::runtime_error("Failed to create camera [" +
+          //                          camera_entries[i].id + "]");
         }
       }
     } catch (const std::exception& e) {
