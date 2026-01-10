@@ -183,7 +183,7 @@ struct LoggingConfig {
   size_t queue_size;
   bool tcp_send_enabled{false};            // 是否启用TCP日志传输
   bool udp_send_enabled{false};            // 是否启用UDP日志传输
-  bool ipc_send_enabled{false};            // 是否启用IPC日志传输
+  bool ipc_send_enabled{true};             // 是否启用IPC日志传输
   std::string ipc_protocol{"tcp"};         // 新增：tcp 或 udp
   std::string tcp_server_ip{"127.0.0.1"};  // TCP服务器IP
   uint16_t tcp_server_port{8080};          // TCP服务器端口
@@ -356,7 +356,8 @@ struct LoggingConfig {
     ini.set("logging", "queue_size", 32768, "异步日志队列大小");
     ini.set("logging", "tcp_send_enabled", false, "是否启用TCP日志传输");
     ini.set("logging", "udp_send_enabled", false, "是否启用UDP日志传输");
-    ini.set("logging", "ipc_send_enabled", false, "是否启用IPC日志传输");
+    ini.set("logging", "ipc_send_enabled", true,
+            "是否启用IPC日志传输(一定要打开,否则崩溃管理器不工作)");
     ini.set("logging", "ipc_protocol", "tcp",
             "IPC日志传输协议 (tcp[默认5140], udp[默认5141])");
     ini.set("logging", "tcp_server_ip", "127.0.0.1", "TCP日志服务器IP地址");
@@ -932,10 +933,31 @@ class ConfigLoader {
       std::filesystem::file_time_type last_write = {};
       std::filesystem::path config_path = get_default_config_path();
 
-      auto to_time_t = [](const std::filesystem::file_time_type &file_time) {
+      // 1. 仅转换为time_t（供计算/比较用）
+      auto file_time_to_time_t =
+          [](const std::filesystem::file_time_type &file_time) -> std::time_t {
         using namespace std::chrono;
         const auto sys_time = clock_cast<system_clock>(file_time);
         return system_clock::to_time_t(sys_time);
+      };
+
+      // 2. 转换为本地时区的格式化字符串（供打印日志用）
+      auto file_time_to_local_str =
+          [&file_time_to_time_t](
+              const std::filesystem::file_time_type &file_time) -> std::string {
+        using namespace std::chrono;
+        // 先转成time_t
+        const std::time_t raw_time = file_time_to_time_t(file_time);
+
+        // Windows 专属：线程安全的本地时间转换
+        std::tm local_tm{};
+        localtime_s(&local_tm, &raw_time);
+
+        // 格式化字符串
+        char time_buf[64] = {0};
+        std::strftime(time_buf, sizeof(time_buf), "%Y-%m-%d %H:%M:%S",
+                      &local_tm);
+        return std::string(time_buf);
       };
 
       // 先读取文件的初始修改时间，避免第一次误判
@@ -944,7 +966,7 @@ class ConfigLoader {
           last_write = std::filesystem::last_write_time(config_path);
           // 可选：打印初始化日志，确认初始时间
           // 修复：改用通用的时间转换方法
-          std::time_t init_time = to_time_t(last_write);
+          std::time_t init_time = file_time_to_time_t(last_write);
           std::cout << "Config monitor initialized, last write time: "
                     << init_time << std::endl;
         }
@@ -964,8 +986,7 @@ class ConfigLoader {
                 curr_time != last_write) {
               // ========== 优化：将file_time_type转为可读时间 ==========
               // 修复核心：通用的file_time_type转time_t方法
-              std::time_t curr_time_t = to_time_t(curr_time);
-              std::string curr_time_str = ctime(&curr_time_t);  // NOLINT
+              std::string curr_time_str = file_time_to_local_str(curr_time);
               // 去掉换行符
               if (!curr_time_str.empty() && curr_time_str.back() == '\n') {
                 curr_time_str.pop_back();

@@ -1,6 +1,20 @@
 cmake_minimum_required(VERSION 3.15)
+project(CFP VERSION 0.1.0 LANGUAGES CXX C DESCRIPTION "Capon Frontend Detect Application")
 
+# 添加cmake模块路径
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(cmake/ApplyPatch.cmake)
+include(cmake/VersionGenerate.cmake)
+
+# 生成版本
+generate_version(
+    MAJOR ${PROJECT_VERSION_MAJOR}
+    MINOR ${PROJECT_VERSION_MINOR}
+    PATCH ${PROJECT_VERSION_PATCH}
+    BUILD 1 # 可以自动递增或从文件读取
+    PRODUCT_NAME "${PROJECT_NAME}"
+    COMPANY_NAME "Capon Corporation")
+
 # 对 cpp_redis 打补丁
 ApplyPatch(
     PATCH_DIR "${CMAKE_SOURCE_DIR}/patches"
@@ -19,9 +33,11 @@ ApplyPatch(
 # 1. 核心：添加 OpenCV 按需查找的开关（默认关闭，仅手动开启时查找）
 # -------------------------------
 option(ENABLE_OPENCV "是否启用 OpenCV 功能（启用则查找，禁用则跳过）" ON)
+
 # 缓存 OpenCV 路径（手动指定一次，后续无需重复查找）
 set(OpenCV_DIR "D:/vcpkg/installed/x64-windows/share/opencv4" CACHE PATH "OpenCV Config 目录（vcpkg 安装路径）")
 set(CMAKE_DISABLE_FIND_PACKAGE_WrapVulkanHeaders TRUE)
+
 # 添加测试选项
 option(ENABLE_TESTS "是否启用测试" OFF)
 
@@ -31,7 +47,7 @@ option(ENABLE_TESTS "是否启用测试" OFF)
 set(VCPKG_ROOT "D:/vcpkg" CACHE PATH "vcpkg 根目录")
 set(CMAKE_TOOLCHAIN_FILE "${VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "vcpkg 工具链文件")
 set(VCPKG_TARGET_TRIPLET "x64-windows" CACHE STRING "强制使用 x64 架构")
-set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE)  # 优先使用config模式
+set(CMAKE_FIND_PACKAGE_PREFER_CONFIG TRUE) # 优先使用config模式
 option(SAVE_RESULT_IMG ON)
 
 # -------------------------------
@@ -44,11 +60,10 @@ set(OpenCV_OPENCL OFF CACHE BOOL "Disable OpenCV OpenCL detection" FORCE)
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/third_party/asio/include)
 
 # 如果是windows平台
-if (WIN32)
+if(WIN32)
     # 使用 Windows 10 SDK
     add_compile_definitions(_WIN32_WINNT=0x0A00)
 endif()
-
 
 set(QT_DIR $ENV{QT_DIR})
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/find_Qt_Dependency.cmake) # 确保模块路径正确
@@ -62,16 +77,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 # 在WINDOWS上禁用minmax宏
-if (WIN32)
+if(WIN32)
     add_definitions(-DNOMINMAX)
+
     if(MSVC)
-        #add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/source-charset:utf-8>")
-        #add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/execution-charset:utf-8>")
+        # add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/source-charset:utf-8>")
+        # add_compile_options("$<$<CXX_COMPILER_ID:MSVC>:/execution-charset:utf-8>")
     endif()
 endif()
-
-# 添加cmake模块路径
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
 # 查找DVP包
 find_package(DVP2 REQUIRED)
@@ -81,14 +94,15 @@ find_package(IKap REQUIRED)
 # -------------------------------
 # 4. 核心优化：按需查找 OpenCV + 缓存结果
 # -------------------------------
-if (ENABLE_OPENCV)
+if(ENABLE_OPENCV)
     # 1. 手动指定 OpenCV 路径（仅需配置一次，根据你的 vcpkg 路径调整）
     set(OpenCV_ROOT "D:/vcpkg/installed/x64-windows")
-    set(OpenCV_INCLUDE_DIRS 
-        "${OpenCV_ROOT}/include/opencv4"  # OpenCV 头文件主目录
+    set(OpenCV_INCLUDE_DIRS
+        "${OpenCV_ROOT}/include/opencv4" # OpenCV 头文件主目录
     )
+
     # 2. 手动指定 OpenCV 库文件（区分 Debug/Release）
-    if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         set(OpenCV_LIBS
             "${OpenCV_ROOT}/debug/lib/opencv_core4d.lib"
             "${OpenCV_ROOT}/debug/lib/opencv_imgproc4d.lib"
@@ -133,12 +147,12 @@ add_subdirectory(third_party/concurrentqueue)
 
 # 包含BS::thread_pool库
 add_library(BS_thread_pool INTERFACE)
-target_include_directories(BS_thread_pool INTERFACE 
+target_include_directories(BS_thread_pool INTERFACE
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/BS_THREAD_POOL/include")
 
 # 包含QtAntDesign库
 # 暂时不考虑前端机界面设计
-#add_subdirectory(third_party/AntDesign)
+# add_subdirectory(third_party/AntDesign)
 
 # cpp-redis
 add_subdirectory(third_party/cpp_redis)

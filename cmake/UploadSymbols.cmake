@@ -46,7 +46,7 @@ if(MATCH_RESULT)
                 COMMAND ${CURL_EXECUTABLE} -X POST 
                     -F "metadata=@${CMAKE_BINARY_DIR}/symbol_info.json"
                     -F "pdb_file=@${PDB_FILE}"
-                    http://127.0.0.1:8080/api/v1/symbols/upload
+                    http://127.0.0.1:3410/upload/minidump
                 WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
             )
             

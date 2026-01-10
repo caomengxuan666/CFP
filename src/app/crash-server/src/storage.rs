@@ -3,12 +3,14 @@ use std::path::{Path, PathBuf};
 use tokio::fs;
 use tokio::io::{AsyncRead, AsyncWriteExt};
 
+#[allow(dead_code)]
 pub struct FileStorage {
     base_path: PathBuf,
     max_minidump_size: u64,
     max_pdb_size: u64,
 }
 
+#[allow(dead_code)]
 impl FileStorage {
     // 方法1：使用同步方法创建目录（推荐）
     pub fn new(base_path: &str, max_minidump_size: u64, max_pdb_size: u64) -> Result<Self> {
@@ -18,6 +20,7 @@ impl FileStorage {
         std::fs::create_dir_all(&base_path)?;
         std::fs::create_dir_all(base_path.join("minidumps"))?;
         std::fs::create_dir_all(base_path.join("pdbs"))?;
+        std::fs::create_dir_all(base_path.join("exes"))?; // 添加EXE存储目录
 
         Ok(FileStorage {
             base_path,
@@ -38,6 +41,7 @@ impl FileStorage {
         fs::create_dir_all(&base_path).await?;
         fs::create_dir_all(base_path.join("minidumps")).await?;
         fs::create_dir_all(base_path.join("pdbs")).await?;
+        fs::create_dir_all(base_path.join("exes")).await?; // 添加EXE存储目录
 
         Ok(FileStorage {
             base_path,
@@ -54,11 +58,19 @@ impl FileStorage {
         exe_age: i32,
         filename: &str,
     ) -> PathBuf {
-        self.base_path
+        let path = self.base_path
             .join("minidumps")
             .join(exe_version)
-            .join(format!("{}_{}", exe_guid, exe_age))
-            .join(filename)
+            .join(exe_guid)
+            .join(exe_age.to_string())
+            .join(filename);
+        
+        // 自动创建所有缺失的子目录
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        
+        path
     }
 
     // 生成pdb文件的存储路径
@@ -69,11 +81,35 @@ impl FileStorage {
         exe_age: i32,
         filename: &str,
     ) -> PathBuf {
-        self.base_path
+        let path = self.base_path
             .join("pdbs")
             .join(exe_version)
-            .join(format!("{}_{}", exe_guid, exe_age))
-            .join(filename)
+            .join(exe_guid)
+            .join(exe_age.to_string())
+            .join(filename);
+        
+        // 自动创建所有缺失的子目录
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        
+        path
+    }
+
+    // 生成exe文件的存储路径
+    pub fn get_exe_path(&self, exe_version: &str, exe_guid: &str, filename: &str) -> PathBuf {
+        let path = self.base_path
+            .join("exes")
+            .join(exe_version)
+            .join(exe_guid)
+            .join(filename);
+        
+        // 自动创建所有缺失的子目录
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        
+        path
     }
 
     // 保存上传的文件到指定路径
