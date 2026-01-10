@@ -49,6 +49,13 @@ class CrashHandlerImpl {
   // 保存原始terminate处理器
   static std::terminate_handler original_terminate_;
 
+  // 生成崩溃文件名
+  static std::string generateCrashFilename(const char* extension);
+
+  // 使用指定文件名写入minidump
+  static std::string writeMiniDumpWithFilename(PEXCEPTION_POINTERS p,
+                                               const std::string& filename);
+
  public:
   // 构造函数和析构函数
   CrashHandlerImpl();
@@ -76,13 +83,19 @@ class CrashHandlerImpl {
   // 写Minidump文件
   static void writeMiniDump(PEXCEPTION_POINTERS p);
 
-  // 发送最小崩溃信息（安全方式）
+  // 发送最小崩溃信息给IPC/TCP/UDP的日志服务器（安全方式）
   static void sendCrashMinimal(PEXCEPTION_POINTERS p);
 
-  static void sendCrashMinimalSEH(PEXCEPTION_POINTERS p);
+  // 发送最小SEH信息
+  static void sendCrashMinimalSEH(PEXCEPTION_POINTERS p,
+                                  const std::string& dump_filename = "");
 
+  // 记录详细的SEH信息
   static void logCrashDetailedSEH(PEXCEPTION_POINTERS p);
 
+  // 启动子进程发送Minidump给崩溃处理服务器
+  static void launchCrashReporter(PEXCEPTION_POINTERS p,
+                                  const char* minidump_path);
   // 记录C++异常
   static void logCppException(const char* message);
   static void logCppException(const std::exception& e);

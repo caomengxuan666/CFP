@@ -1,0 +1,210 @@
+// @CMAKE_GENERATED_DO_NOT_EDIT@
+// 自动生成的版本信息 - 请勿手动修改
+// NOLINTBEGIN
+#ifndef CAPON_VERSION_H
+#define CAPON_VERSION_H
+
+#ifdef __cplusplus
+#include <string>
+#include <cstdint>
+extern "C" {
+#endif
+
+#include <stdint.h>
+#include <stdbool.h>
+
+// ===============================
+// 平台导出宏定义
+// ===============================
+
+#ifdef _WIN32
+    #ifdef CAPON_VERSION_BUILDING
+        #define CAPON_API __declspec(dllexport)
+    #elif defined(CAPON_VERSION_USING)
+        #define CAPON_API __declspec(dllimport)
+    #else
+        #define CAPON_API
+    #endif
+#else
+    #define CAPON_API __attribute__((visibility("default")))
+#endif
+
+// ===============================
+// 基本版本号定义
+// ===============================
+
+#define CAPON_VERSION_MAJOR @CAPON_VERSION_MAJOR@
+#define CAPON_VERSION_MINOR @CAPON_VERSION_MINOR@
+#define CAPON_VERSION_PATCH @CAPON_VERSION_PATCH@
+#define CAPON_VERSION_BUILD @CAPON_VERSION_BUILD@
+
+// 版本字符串
+#define CAPON_VERSION_STRING "@CAPON_VERSION_MAJOR@.@CAPON_VERSION_MINOR@.@CAPON_VERSION_PATCH@.@CAPON_VERSION_BUILD@"
+
+// 产品信息
+#define CAPON_PRODUCT_NAME "@CAPON_PRODUCT_NAME@"
+#define CAPON_COMPANY_NAME "@CAPON_COMPANY_NAME@"
+#define CAPON_COPYRIGHT "Copyright © @CAPON_COPYRIGHT_YEAR@ @CAPON_COMPANY_NAME@. All rights reserved."
+#define CAPON_APP_GUID "@CAPON_APP_GUID@"
+
+// ===============================
+// 版本号打包/解包宏
+// ===============================
+
+// 将四个版本号打包成一个64位整数
+// 格式: 0xMMMMmmmmPPPPBBBB (M=Major, m=Minor, P=Patch, B=Build)
+#define CAPON_VERSION_PACK(major, minor, patch, build) \
+    (((uint64_t)(major) << 48) | \
+     ((uint64_t)(minor) << 32) | \
+     ((uint64_t)(patch) << 16) | \
+     ((uint64_t)(build)))
+
+// 当前版本的打包值
+#define CAPON_VERSION_PACKED \
+    CAPON_VERSION_PACK(CAPON_VERSION_MAJOR, CAPON_VERSION_MINOR, \
+                      CAPON_VERSION_PATCH, CAPON_VERSION_BUILD)
+
+// 解包宏
+#define CAPON_VERSION_EXTRACT_MAJOR(packed) ((uint16_t)((packed) >> 48))
+#define CAPON_VERSION_EXTRACT_MINOR(packed) ((uint16_t)((packed) >> 32))
+#define CAPON_VERSION_EXTRACT_PATCH(packed) ((uint16_t)((packed) >> 16))
+#define CAPON_VERSION_EXTRACT_BUILD(packed) ((uint16_t)(packed))
+
+// ===============================
+// 版本比较宏
+// ===============================
+
+#define CAPON_VERSION_EQUAL(v1, v2) ((v1) == (v2))
+#define CAPON_VERSION_NOT_EQUAL(v1, v2) ((v1) != (v2))
+
+// 比较两个打包版本
+#define CAPON_VERSION_GT(v1, v2) ((v1) > (v2))
+#define CAPON_VERSION_LT(v1, v2) ((v1) < (v2))
+#define CAPON_VERSION_GE(v1, v2) ((v1) >= (v2))
+#define CAPON_VERSION_LE(v1, v2) ((v1) <= (v2))
+
+// 与当前版本比较
+#define CAPON_VERSION_CURRENT_GT(major, minor, patch, build) \
+    (CAPON_VERSION_PACKED > CAPON_VERSION_PACK(major, minor, patch, build))
+#define CAPON_VERSION_CURRENT_LT(major, minor, patch, build) \
+    (CAPON_VERSION_PACKED < CAPON_VERSION_PACK(major, minor, patch, build))
+#define CAPON_VERSION_CURRENT_GE(major, minor, patch, build) \
+    (CAPON_VERSION_PACKED >= CAPON_VERSION_PACK(major, minor, patch, build))
+#define CAPON_VERSION_CURRENT_LE(major, minor, patch, build) \
+    (CAPON_VERSION_PACKED <= CAPON_VERSION_PACK(major, minor, patch, build))
+
+// ===============================
+// 版本检查宏
+// ===============================
+
+// 检查最小版本要求
+#define CAPON_VERSION_CHECK_MIN(major, minor, patch, build) \
+    (CAPON_VERSION_PACKED >= CAPON_VERSION_PACK(major, minor, patch, build))
+
+// 检查版本范围
+#define CAPON_VERSION_IN_RANGE(min_major, min_minor, min_patch, min_build, \
+                               max_major, max_minor, max_patch, max_build) \
+    (CAPON_VERSION_PACKED >= CAPON_VERSION_PACK(min_major, min_minor, min_patch, min_build) && \
+     CAPON_VERSION_PACKED <= CAPON_VERSION_PACK(max_major, max_minor, max_patch, max_build))
+
+// ===============================
+// 函数声明
+// ===============================
+
+// 获取版本信息结构
+typedef struct {
+    uint16_t major;
+    uint16_t minor;
+    uint16_t patch;
+    uint16_t build;
+    const char* version_string;
+    const char* full_version;
+    const char* product_name;
+    const char* company_name;
+    const char* copyright;
+    const char* guid;
+} VersionInfo;
+
+
+// C接口
+CAPON_API const VersionInfo* capon_get_version_info(void);
+CAPON_API uint64_t capon_get_packed_version(void);
+CAPON_API const char* capon_get_version_string(void);
+CAPON_API const char* capon_get_full_version(void);
+CAPON_API const char* capon_get_guid(void);
+CAPON_API bool capon_check_version(uint16_t major, uint16_t minor, 
+                                  uint16_t patch, uint16_t build);
+CAPON_API int capon_compare_version(uint16_t major1, uint16_t minor1, 
+                                   uint16_t patch1, uint16_t build1,
+                                   uint16_t major2, uint16_t minor2, 
+                                   uint16_t patch2, uint16_t build2);
+
+#ifdef __cplusplus
+} // extern "C"
+
+namespace capon {
+namespace version {
+
+// C++接口
+class CAPON_API Version {
+public:
+    // 获取单例实例
+    static const Version& instance();
+    
+    // 基本信息
+    uint16_t major() const { return info_.major; }
+    uint16_t minor() const { return info_.minor; }
+    uint16_t patch() const { return info_.patch; }
+    uint16_t build() const { return info_.build; }
+    
+    // 字符串信息
+    const char* versionString() const { return info_.version_string; }
+    const char* fullVersion() const;  // 添加 const 修饰符
+    const char* productName() const { return info_.product_name; }
+    const char* companyName() const { return info_.company_name; }
+    const char* copyright() const { return info_.copyright; }
+    const char* guid() const { return info_.guid; }
+    
+    // 打包版本
+    uint64_t packed() const { return packed_; }
+    
+    // 比较操作
+    bool operator==(const Version& other) const { return packed_ == other.packed_; }
+    bool operator!=(const Version& other) const { return packed_ != other.packed_; }
+    bool operator>(const Version& other) const { return packed_ > other.packed_; }
+    bool operator<(const Version& other) const { return packed_ < other.packed_; }
+    bool operator>=(const Version& other) const { return packed_ >= other.packed_; }
+    bool operator<=(const Version& other) const { return packed_ <= other.packed_; }
+    
+    // 静态比较函数
+    static int compare(uint16_t major1, uint16_t minor1, 
+                      uint16_t patch1, uint16_t build1,
+                      uint16_t major2, uint16_t minor2, 
+                      uint16_t patch2, uint16_t build2);
+    
+    // 检查版本要求
+    bool checkMin(uint16_t major, uint16_t minor, 
+                 uint16_t patch, uint16_t build) const;
+    bool inRange(uint16_t min_major, uint16_t min_minor, 
+                uint16_t min_patch, uint16_t min_build,
+                uint16_t max_major, uint16_t max_minor, 
+                uint16_t max_patch, uint16_t max_build) const;
+    
+    // 转换为字符串
+    std::string toString() const;
+    std::string toShortString() const;
+    
+private:
+    Version();
+    VersionInfo info_;
+    uint64_t packed_;
+};
+
+// 方便使用的全局函数
+inline const Version& version() { return Version::instance(); }
+
+} // namespace version
+} // namespace capon
+#endif // __cplusplus
+// NOLINTBEGIN
+#endif // CAPON_VERSION_H

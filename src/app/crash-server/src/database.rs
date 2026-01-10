@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 //use uuid::Uuid;
 
-// 添加这一行以导入OptionalExtension trait
+// 导入OptionalExtension trait
 use rusqlite::OptionalExtension;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -21,16 +21,31 @@ pub struct Minidump {
     pub exception_address: Option<String>, // 异常地址
     pub file_path: String,                 // Minidump文件存储路径
     pub created_at: String,                // 服务器接收时间
+    pub exe_time_date_stamp: Option<u32>,  // EXE时间戳数据
+    pub exe_size_of_image: Option<u32>,    // EXE的ImageSize
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Pdb {
     pub id: String,
+    pub exe_version: String,              // EXE版本号
+    pub exe_guid: String,                 // EXE的GUID
+    pub exe_age: i32,                     // PDB的Age值
+    pub pdb_filename: String,             // PDB文件名
+    pub file_path: String,                // PDB文件存储路径
+    pub uploaded_at: String,              // 上传时间
+    pub exe_time_date_stamp: Option<u32>, // EXE时间戳数据
+    pub exe_size_of_image: Option<u32>,   // EXE的ImageSize
+}
+
+// 新增EXE文件结构
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Exe {
+    pub id: String,
     pub exe_version: String,  // EXE版本号
     pub exe_guid: String,     // EXE的GUID
-    pub exe_age: i32,         // PDB的Age值
-    pub pdb_filename: String, // PDB文件名
-    pub file_path: String,    // PDB文件存储路径
+    pub exe_filename: String, // EXE文件名
+    pub file_path: String,    // EXE文件存储路径
     pub uploaded_at: String,  // 上传时间
 }
 
@@ -52,6 +67,37 @@ impl Database {
         })
     }
 
+    pub fn find_pdb_by_pe_info(
+        &self,
+        time_date_stamp: u32,
+        size_of_image: u32,
+    ) -> anyhow::Result<Option<Pdb>> {
+        let conn = self.conn.lock().unwrap();
+        let pdb = conn
+            .query_row(
+                "SELECT id, exe_version, exe_guid, exe_age, pdb_filename, file_path, uploaded_at,
+                exe_time_date_stamp, exe_size_of_image
+         FROM pdbs 
+         WHERE exe_time_date_stamp = ?1 AND exe_size_of_image = ?2",
+                rusqlite::params![time_date_stamp, size_of_image],
+                |row| {
+                    Ok(Pdb {
+                        id: row.get(0)?,
+                        exe_version: row.get(1)?,
+                        exe_guid: row.get(2)?,
+                        exe_age: row.get(3)?,
+                        pdb_filename: row.get(4)?,
+                        file_path: row.get(5)?,
+                        uploaded_at: row.get(6)?,
+                        exe_time_date_stamp: row.get(7).ok(),
+                        exe_size_of_image: row.get(8).ok(),
+                    })
+                },
+            )
+            .optional()?;
+        Ok(pdb)
+    }
+
     fn init_db(conn: &Connection) -> Result<()> {
         // 创建minidumps表
         conn.execute(
@@ -66,7 +112,9 @@ impl Database {
                 exception_code TEXT NOT NULL,
                 exception_address TEXT,
                 file_path TEXT NOT NULL,
-                created_at TEXT NOT NULL
+                created_at TEXT NOT NULL,
+                exe_time_date_stamp INTERGER,
+                exe_size_of_image INTERGER
             )",
             [],
         )?;
@@ -79,6 +127,21 @@ impl Database {
                 exe_guid TEXT NOT NULL,
                 exe_age INTEGER NOT NULL,
                 pdb_filename TEXT NOT NULL,
+                file_path TEXT NOT NULL,
+                uploaded_at TEXT NOT NULL,
+                exe_time_date_stamp INTERGER,
+                exe_size_of_image INTERGER
+            )",
+            [],
+        )?;
+
+        // 创建exes表
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS exes (
+                id TEXT PRIMARY KEY,
+                exe_version TEXT NOT NULL,
+                exe_guid TEXT NOT NULL,
+                exe_filename TEXT NOT NULL,
                 file_path TEXT NOT NULL,
                 uploaded_at TEXT NOT NULL
             )",
@@ -111,6 +174,17 @@ impl Database {
             [],
         )?;
 
+        // 为exes表创建索引
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_exes_guid ON exes(exe_guid)",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_exes_version ON exes(exe_version)",
+            [],
+        )?;
+
         Ok(())
     }
 
@@ -118,8 +192,8 @@ impl Database {
         let conn = self.conn.lock().unwrap();
 
         conn.execute(
-            "INSERT INTO minidumps (id, timestamp, exe_version, exe_guid, exe_age, pid, tid, exception_code, exception_address, file_path, created_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+            "INSERT INTO minidumps (id, timestamp, exe_version, exe_guid, exe_age, pid, tid, exception_code, exception_address, file_path, created_at,exe_time_date_stamp,exe_size_of_image)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11 , ?12 ,?13)",
             params![
                 minidump.id,
                 minidump.timestamp,
@@ -131,7 +205,9 @@ impl Database {
                 minidump.exception_code,
                 minidump.exception_address,
                 minidump.file_path,
-                minidump.created_at
+                minidump.created_at,
+                minidump.exe_time_date_stamp,
+                minidump.exe_size_of_image
             ],
         )?;
 
@@ -142,16 +218,38 @@ impl Database {
         let conn = self.conn.lock().unwrap();
 
         conn.execute(
-            "INSERT INTO pdbs (id, exe_version, exe_guid, exe_age, pdb_filename, file_path, uploaded_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+        "INSERT INTO pdbs (id, exe_version, exe_guid, exe_age, pdb_filename, file_path, uploaded_at, exe_time_date_stamp, exe_size_of_image)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",  
+        params![
+            pdb.id,
+            pdb.exe_version,
+            pdb.exe_guid,
+            pdb.exe_age,
+            pdb.pdb_filename,
+            pdb.file_path,
+            pdb.uploaded_at,
+            pdb.exe_time_date_stamp,
+            pdb.exe_size_of_image
+        ],
+    )?;
+
+        Ok(())
+    }
+
+    // 新增EXE文件保存方法
+    pub fn save_exe(&self, exe: &Exe) -> Result<()> {
+        let conn = self.conn.lock().unwrap();
+
+        conn.execute(
+            "INSERT INTO exes (id, exe_version, exe_guid, exe_filename, file_path, uploaded_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             params![
-                pdb.id,
-                pdb.exe_version,
-                pdb.exe_guid,
-                pdb.exe_age,
-                pdb.pdb_filename,
-                pdb.file_path,
-                pdb.uploaded_at
+                exe.id,
+                exe.exe_version,
+                exe.exe_guid,
+                exe.exe_filename,
+                exe.file_path,
+                exe.uploaded_at
             ],
         )?;
 
@@ -186,6 +284,22 @@ impl Database {
         Ok(pdb)
     }
 
+    // 新增EXE文件获取方法
+    pub fn get_exe_by_id(&self, id: &str) -> Result<Option<Exe>> {
+        let conn = self.conn.lock().unwrap();
+
+        let exe = conn
+            .query_row(
+                "SELECT id, exe_version, exe_guid, exe_filename, file_path, uploaded_at
+             FROM exes WHERE id = ?1",
+                params![id],
+                |row| self.exe_from_row(row),
+            )
+            .optional()?;
+
+        Ok(exe)
+    }
+
     pub fn find_matching_pdb(
         &self,
         exe_version: &str,
@@ -206,12 +320,97 @@ impl Database {
         Ok(pdb)
     }
 
-    pub fn find_minidumps(
+    // 新增EXE文件查找方法
+    pub fn find_exe_by_guid(&self, exe_guid: &str) -> Result<Option<Exe>> {
+        let conn = self.conn.lock().unwrap();
+
+        let exe = conn
+            .query_row(
+                "SELECT id, exe_version, exe_guid, exe_filename, file_path, uploaded_at
+             FROM exes WHERE exe_guid = ?1",
+                params![exe_guid],
+                |row| self.exe_from_row(row),
+            )
+            .optional()?;
+
+        Ok(exe)
+    }
+
+    // 获取符合条件的minidump总数
+    pub fn count_minidumps(
         &self,
         version: Option<&str>,
         guid: Option<&str>,
         start_time: Option<DateTime<Utc>>,
         end_time: Option<DateTime<Utc>>,
+    ) -> Result<u32> {
+        // 构建查询语句和参数
+        let (sql, params) = {
+            let mut base_sql = String::from("SELECT COUNT(*) FROM minidumps");
+
+            let mut conditions = Vec::new();
+            let mut params: Vec<String> = Vec::new();
+
+            if let Some(ver) = version {
+                conditions.push("exe_version = ?");
+                let ver = ver.to_string();
+                params.push(ver);
+            }
+
+            if let Some(g) = guid {
+                conditions.push("exe_guid = ?");
+                let g = g.to_string();
+                params.push(g);
+            }
+
+            if let Some(start) = start_time {
+                conditions.push("timestamp >= ?");
+                let start_str = start.to_rfc3339();
+                params.push(start_str);
+            }
+
+            if let Some(end) = end_time {
+                conditions.push("timestamp <= ?");
+                let end_str = end.to_rfc3339();
+                params.push(end_str);
+            }
+
+            if !conditions.is_empty() {
+                base_sql.push_str(" WHERE ");
+                base_sql.push_str(&conditions.join(" AND "));
+            }
+
+            (base_sql, params)
+        };
+
+        let conn = self.conn.lock().unwrap();
+        let mut stmt = conn.prepare(&sql)?;
+
+        // 根据参数数量执行不同的查询
+        let count = match params.len() {
+            0 => stmt.query_row([], |row| row.get::<_, i32>(0))?,
+            1 => stmt.query_row(params![params[0]], |row| row.get::<_, i32>(0))?,
+            2 => stmt.query_row(params![params[0], params[1]], |row| row.get::<_, i32>(0))?,
+            3 => stmt.query_row(params![params[0], params[1], params[2]], |row| {
+                row.get::<_, i32>(0)
+            })?,
+            4 => stmt.query_row(params![params[0], params[1], params[2], params[3]], |row| {
+                row.get::<_, i32>(0)
+            })?,
+            _ => stmt.query_row(params![params[0], params[1], params[2], params[3]], |row| {
+                row.get::<_, i32>(0)
+            })?, // 多余参数使用前4个
+        };
+
+        Ok(count as u32)
+    }
+
+    pub fn find_minidumps(
+        &self,
+        version: Option<&str>,
+        guid: Option<&str>,
+        start_time: Option<DateTime<Utc>>,
+        _end_time: Option<DateTime<Utc>>,
         page: u32,
         page_size: u32,
     ) -> Result<Vec<Minidump>> {
@@ -293,6 +492,8 @@ impl Database {
             exception_address: row.get(8).ok(),
             file_path: row.get(9)?,
             created_at: row.get(10)?,
+            exe_time_date_stamp: row.get(11).ok(),
+            exe_size_of_image: row.get(12).ok(),
         })
     }
 
@@ -305,6 +506,20 @@ impl Database {
             pdb_filename: row.get(4)?,
             file_path: row.get(5)?,
             uploaded_at: row.get(6)?,
+            exe_time_date_stamp: row.get(7).ok(),
+            exe_size_of_image: row.get(8).ok(),
+        })
+    }
+
+    // 新增EXE文件行解析方法
+    fn exe_from_row(&self, row: &Row) -> rusqlite::Result<Exe> {
+        Ok(Exe {
+            id: row.get(0)?,
+            exe_version: row.get(1)?,
+            exe_guid: row.get(2)?,
+            exe_filename: row.get(3)?,
+            file_path: row.get(4)?,
+            uploaded_at: row.get(5)?,
         })
     }
 }

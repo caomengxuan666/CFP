@@ -175,9 +175,12 @@ void IkapCameraCapture::update_camera_params() {
   }
 
   // 1. 通用参数更新（新版接口）
-  if (config_->exposure_us > 0)
+  if (config_->exposure_us > 0) {
     ItkDevSetDouble(handle_, "ExposureTime", config_->exposure_us);
-  if (config_->gain > 0) ItkDevSetDouble(handle_, "Gain", config_->gain);
+  }
+  if (config_->gain > 0) {
+    ItkDevSetDouble(handle_, "Gain", config_->gain);
+  }
   if (config_->roi_w > 0 && config_->roi_h > 0) {
     ItkDevSetInt64(handle_, "OffsetX", config_->roi_x);
     ItkDevSetInt64(handle_, "OffsetY", config_->roi_y);

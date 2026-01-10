@@ -35,6 +35,7 @@
 
 #include "logging/CaponLogging.hpp"
 #include "logging/CrashLogger.hpp"
+#include "version/capon_version.h"
 
 // Windows 调试帮助
 #include <dbghelp.h>   // NOLINT
@@ -121,8 +122,8 @@ std::string CrashHandlerImpl::getStackTrace() {
 
   out << "调用栈 (" << frames << " 帧):\n";
 
-  SYMBOL_INFO* symbol = reinterpret_cast<SYMBOL_INFO*>(
-      calloc(sizeof(SYMBOL_INFO) + 256, 1));  // NOLINT
+  SYMBOL_INFO* symbol = reinterpret_cast<SYMBOL_INFO*>(  // NOLINT
+      calloc(sizeof(SYMBOL_INFO) + 256, 1));             // NOLINT
   if (!symbol) {
     return "符号内存分配失败\n";
   }
@@ -193,10 +194,36 @@ void CrashHandlerImpl::terminateHandler() {
   // 2. 记录C++异常
   logCppException(message);
 
-  // 3. 生成Minidump（如果需要）
-  writeMiniDump(nullptr);
+  // 3. 生成带时间戳的Minidump文件
+  SYSTEMTIME st;
+  GetLocalTime(&st);
+  char timestamp[32];
+  _snprintf_s(timestamp, sizeof(timestamp), _TRUNCATE,
+              "%04d%02d%02d_%02d%02d%02d_%03d_%lu_%lu", st.wYear, st.wMonth,
+              st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds,
+              GetCurrentProcessId(), GetCurrentThreadId());
 
-  // 4. 调用原始的terminate处理器
+  // 获取当前可执行文件目录
+  char exePath[MAX_PATH];
+  GetModuleFileNameA(NULL, exePath, MAX_PATH);
+  std::string exeDir = exePath;
+  exeDir = exeDir.substr(0, exeDir.find_last_of("\\/"));
+
+  std::string dump_filename = std::string("crash_") + timestamp + ".dmp";
+  std::string full_dump_path =
+      exeDir + "\\" + dump_filename;  // Windows路径分隔符
+  std::string actual_dump_path =
+      writeMiniDumpWithFilename(nullptr, full_dump_path);
+
+  // 4. 发送崩溃报告
+  sendCrashMinimal(nullptr);
+
+  // 5. 启动独立崩溃报告进程
+  if (!actual_dump_path.empty()) {
+    launchCrashReporter(nullptr, actual_dump_path.c_str());
+  }
+
+  // 6. 调用原始的terminate处理器
   if (original_terminate_) {
     original_terminate_();
   } else {
@@ -267,12 +294,29 @@ LONG WINAPI CrashHandlerImpl::unhandledExceptionHandler(PEXCEPTION_POINTERS p) {
     return EXCEPTION_EXECUTE_HANDLER;
   }
 
+  // 生成唯一的文件名前缀（使用时间戳）
+  SYSTEMTIME st;
+  GetLocalTime(&st);
+  char timestamp[32];
+  _snprintf_s(timestamp, sizeof(timestamp), _TRUNCATE,
+              "%04d%02d%02d_%02d%02d%02d_%03d_%lu_%lu", st.wYear, st.wMonth,
+              st.wDay, st.wHour, st.wMinute, st.wSecond, st.wMilliseconds,
+              GetCurrentProcessId(), GetCurrentThreadId());
+
+  // 1. 记录详细日志
   logCrashDetailedSEH(p);
 
-  writeMiniDump(p);
+  // 2. 生成minidump文件（获取文件名）
+  std::string dump_filename = std::string("crash_") + timestamp + ".dmp";
+  std::string actual_dump_path = writeMiniDumpWithFilename(p, dump_filename);
 
-  // NEW：SEH 专用，允许带异常描述
-  sendCrashMinimalSEH(p);
+  // 3. 发送崩溃报告（可以包含文件名）
+  sendCrashMinimalSEH(p, actual_dump_path);
+
+  // 4. 启动独立崩溃报告进程
+  if (!actual_dump_path.empty()) {
+    launchCrashReporter(p, actual_dump_path.c_str());
+  }
 
   // 立刻终止进程,保存原始的崩溃点
   return EXCEPTION_EXECUTE_HANDLER;
@@ -283,35 +327,54 @@ LONG WINAPI CrashHandlerImpl::unhandledExceptionHandler(PEXCEPTION_POINTERS p) {
 // ===============================
 
 void CrashHandlerImpl::writeMiniDump(PEXCEPTION_POINTERS p) {
+  std::string filename = generateCrashFilename(".dmp");
+  writeMiniDumpWithFilename(p, filename);
+}
+
+// 生成崩溃文件名
+std::string CrashHandlerImpl::generateCrashFilename(const char* extension) {
   SYSTEMTIME st;
   GetLocalTime(&st);
 
-  char dump_filename[256];
-  _snprintf_s(dump_filename, sizeof(dump_filename), _TRUNCATE,
-              "crash_%04d%02d%02d_%02d%02d%02d.dmp", st.wYear, st.wMonth,
-              st.wDay, st.wHour, st.wMinute, st.wSecond);
+  char filename[256];
+  _snprintf_s(filename, sizeof(filename), _TRUNCATE,
+              "crash_%04d%02d%02d_%02d%02d%02d_%03d_%lu_%lu%s", st.wYear,
+              st.wMonth, st.wDay, st.wHour, st.wMinute, st.wSecond,
+              st.wMilliseconds, GetCurrentProcessId(), GetCurrentThreadId(),
+              extension);
+  return filename;
+}
 
-  HANDLE hFile = CreateFileA(dump_filename, GENERIC_WRITE, 0, nullptr,
+// 使用指定文件名写入minidump
+std::string CrashHandlerImpl::writeMiniDumpWithFilename(
+    PEXCEPTION_POINTERS p, const std::string& filename) {
+  HANDLE hFile = CreateFileA(filename.c_str(), GENERIC_WRITE, 0, nullptr,
                              CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
 
   if (hFile == INVALID_HANDLE_VALUE) {
-    return;
+    return "";
   }
 
   MINIDUMP_EXCEPTION_INFORMATION mei{};
   mei.ThreadId = GetCurrentThreadId();
   mei.ExceptionPointers = p;
   mei.ClientPointers = FALSE;
-
-  MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile,
-                    static_cast<MINIDUMP_TYPE>(
-                        MiniDumpWithThreadInfo | MiniDumpWithFullMemoryInfo |
-                        MiniDumpWithHandleData | MiniDumpWithUnloadedModules),
-                    p ? &mei : nullptr, nullptr, nullptr);
+  // 为了保证程序大小不太离谱。这么多应该也够了
+  MINIDUMP_TYPE dump_type = static_cast<MINIDUMP_TYPE>(
+      MiniDumpNormal |                          // 基本信息
+      MiniDumpWithThreadInfo |                  // 线程信息（必须）
+      MiniDumpWithUnloadedModules |             // 卸载的模块（有用）
+      MiniDumpWithCodeSegs |                    // 代码段（用于符号解析）
+      MiniDumpWithIndirectlyReferencedMemory |  // 间接引用的内存（用于栈追踪）
+      MiniDumpIgnoreInaccessibleMemory |        // 忽略不可访问内存
+      MiniDumpWithProcessThreadData);           // 进程/线程数据
+  BOOL success =
+      MiniDumpWriteDump(GetCurrentProcess(), GetCurrentProcessId(), hFile,
+                        dump_type, p ? &mei : nullptr, nullptr, nullptr);
 
   CloseHandle(hFile);
+  return success ? filename : "";
 }
-
 // ===============================
 // Crash Send (Signal-safe)
 // ===============================
@@ -340,10 +403,11 @@ void CrashHandlerImpl::sendCrashMinimal(PEXCEPTION_POINTERS p) {
 // ⭐ NEW: Crash Send (SEH only)
 // ===============================
 
-void CrashHandlerImpl::sendCrashMinimalSEH(PEXCEPTION_POINTERS p) {
+void CrashHandlerImpl::sendCrashMinimalSEH(PEXCEPTION_POINTERS p,
+                                           const std::string& dump_filename) {
   static const auto& ipc_cfg = CaponLogger::instance().getIpcConfig();
 
-  char buf[512];
+  char buf[768];  // 增大缓冲区以容纳文件名
 
   if (p && p->ExceptionRecord) {
     DWORD code = p->ExceptionRecord->ExceptionCode;
@@ -353,26 +417,31 @@ void CrashHandlerImpl::sendCrashMinimalSEH(PEXCEPTION_POINTERS p) {
       if (ex) {
         try {
           std::rethrow_exception(ex);
-
         } catch (const std::exception& e) {
           desc = std::string("C++异常: ") + e.what();
-
         } catch (...) {
           desc = "C++异常: 非标准异常";
         }
-
       } else {
         desc = "C++异常: 无活动异常";
       }
-
     } else {
       desc = getExceptionDescription(code);
     }
 
-    _snprintf_s(buf, sizeof(buf), _TRUNCATE,
-                "CRASH pid=%lu tid=%lu code=0x%08X (%s) addr=%p",
-                GetCurrentProcessId(), GetCurrentThreadId(), code, desc.c_str(),
-                p->ExceptionRecord->ExceptionAddress);
+    // 如果有dump文件名，包含在消息中
+    if (!dump_filename.empty()) {
+      _snprintf_s(buf, sizeof(buf), _TRUNCATE,
+                  "CRASH pid=%lu tid=%lu code=0x%08X (%s) addr=%p dump=%s",
+                  GetCurrentProcessId(), GetCurrentThreadId(), code,
+                  desc.c_str(), p->ExceptionRecord->ExceptionAddress,
+                  dump_filename.c_str());
+    } else {
+      _snprintf_s(buf, sizeof(buf), _TRUNCATE,
+                  "CRASH pid=%lu tid=%lu code=0x%08X (%s) addr=%p",
+                  GetCurrentProcessId(), GetCurrentThreadId(), code,
+                  desc.c_str(), p->ExceptionRecord->ExceptionAddress);
+    }
   } else {
     _snprintf_s(buf, sizeof(buf), _TRUNCATE,
                 "CRASH pid=%lu tid=%lu code=UNKNOWN", GetCurrentProcessId(),
@@ -461,6 +530,131 @@ void CrashHandlerImpl::logCppException(const char* message) {
 
 void CrashHandlerImpl::logCppException(const std::exception& e) {
   logCppException(e.what());
+}
+
+// 启动独立崩溃报告进程
+void CrashHandlerImpl::launchCrashReporter(PEXCEPTION_POINTERS p,
+                                           const char* minidump_path) {
+  // === 新增：解析主模块 PE 头 ===
+  DWORD exe_time_date_stamp = 0;
+  DWORD exe_size_of_image = 0;
+
+  HMODULE hModule = GetModuleHandle(nullptr);
+  if (hModule) {
+    char exe_path[MAX_PATH];
+    if (GetModuleFileNameA(hModule, exe_path, MAX_PATH)) {
+      HANDLE hFile = CreateFileA(exe_path, GENERIC_READ, FILE_SHARE_READ,
+                                 nullptr, OPEN_EXISTING, 0, nullptr);
+      if (hFile != INVALID_HANDLE_VALUE) {
+        HANDLE hMapping =
+            CreateFileMappingA(hFile, nullptr, PAGE_READONLY, 0, 0, nullptr);
+        if (hMapping) {
+          LPVOID base = MapViewOfFile(hMapping, FILE_MAP_READ, 0, 0, 0);
+          if (base) {
+            PIMAGE_DOS_HEADER dos = static_cast<PIMAGE_DOS_HEADER>(base);
+            if (dos->e_magic == IMAGE_DOS_SIGNATURE) {
+              // NOLINTBEGIN
+              PIMAGE_NT_HEADERS nt = reinterpret_cast<PIMAGE_NT_HEADERS>(
+                  reinterpret_cast<BYTE*>(base) + dos->e_lfanew);
+              // NOLINTEND
+              if (nt->Signature == IMAGE_NT_SIGNATURE) {
+                exe_time_date_stamp = nt->FileHeader.TimeDateStamp;
+                exe_size_of_image = nt->OptionalHeader.SizeOfImage;
+              }
+            }
+            UnmapViewOfFile(base);
+          }
+          CloseHandle(hMapping);
+        }
+        CloseHandle(hFile);
+      }
+    }
+  }
+  // === PE 解析结束 ===
+  // 构建命令行参数（栈上分配）
+  char cmd_line[4096];
+  char exe_path[MAX_PATH];
+
+  // 获取当前exe所在目录，找到crash-reporter.exe
+  GetModuleFileNameA(NULL, exe_path, MAX_PATH);
+  char* last_slash = strrchr(exe_path, '\\');
+  if (last_slash) {
+    *last_slash = '\0';
+    strcat_s(exe_path, sizeof(exe_path), "\\crash-reporter.exe");
+  } else {
+    strcpy_s(exe_path, sizeof(exe_path), "crash-reporter.exe");
+  }
+
+  // 获取版本号和GUID
+  auto& version_instance = capon::version::version();
+  const char* version = version_instance.versionString();
+  const char* guid = version_instance.guid();
+  const char* server_url =
+      "http://localhost:3410/upload/minidump";  // TODO(cmx): 从配置获取
+  const char* api_key = "test-api-key-123";     // TODO(cmx): 从配置获取
+  int exe_age = 0;  // TODO(cmx): 如果需要可以计算exe文件年龄
+
+  // 构建参数 - 注意参数顺序：
+  // 1. 服务器URL
+  // 2. API密钥
+  // 3. minidump路径
+  // 4. 版本
+  // 5. GUID
+  // 6. PID
+  // 7. TID
+  // 8. 异常码（十六进制，不带0x前缀）
+  // 9. 异常地址（十六进制，不带0x前缀）
+  // 10. exe_age
+  // 11. exe_time_date_stamp（十进制）
+  // 12. exe_size_of_image（十进制）
+  std::string cmd_line_str = std::format(
+      "\"{}\" "  // 1.crash_reporter.exe路径
+      "\"{}\" "  // 2.服务器URL
+      "\"{}\" "  // 3.API Key
+      "\"{}\" "  // 4.minidump文件路径
+      "\"{}\" "  // 5.版本号
+      "\"{}\" "  // 6.GUID
+      "{} "      // 7.pid
+      "{} "      // 8.tid
+      "{:08X} "  // 9.异常代码（不带0x前缀）
+      "{} "      // 10.异常地址（自动格式化为0x...）
+      "{} "      // 11.exe_age
+      "{} "      // 12.exe_time_date_stamp（十进制）
+      "{}",      // 13.exe_size_of_image（十进制）
+      exe_path, server_url, api_key, minidump_path, version, guid,
+      GetCurrentProcessId(), GetCurrentThreadId(),
+      p ? p->ExceptionRecord->ExceptionCode : 0xC0000005,
+      // NOLINTNEXTLINE
+      p ? p->ExceptionRecord->ExceptionAddress : (void*)0x7FFE12345678, exe_age,
+      exe_time_date_stamp, exe_size_of_image);
+  // 转换为 C 风格字符串用于 CreateProcessA
+  if (cmd_line_str.size() >= sizeof(cmd_line)) {
+    printf("错误: 命令行过长 (%zu 字节)\n", cmd_line_str.size());
+    return;
+  }
+  strcpy_s(cmd_line, cmd_line_str.c_str());
+
+  printf("启动崩溃报告器: %s\n", cmd_line);
+
+  // 启动独立进程
+  STARTUPINFOA si = {sizeof(si)};
+  PROCESS_INFORMATION pi = {0};
+
+  // 关键参数：
+  // CREATE_NO_WINDOW: 不创建控制台窗口
+  // DETACHED_PROCESS: 独立进程，不附加到控制台
+  // CREATE_BREAKAWAY_FROM_JOB: 允许从作业中脱离
+  DWORD flags = CREATE_NO_WINDOW | DETACHED_PROCESS | CREATE_BREAKAWAY_FROM_JOB;
+
+  if (CreateProcessA(NULL, cmd_line, NULL, NULL, FALSE, flags, NULL, NULL, &si,
+                     &pi)) {
+    // 立即关闭句柄，让子进程完全独立
+    CloseHandle(pi.hThread);
+    CloseHandle(pi.hProcess);
+  } else {
+    DWORD error = GetLastError();
+    printf("创建进程失败，错误码: %lu\n", error);
+  }
 }
 
 #ifndef NTSTATUS

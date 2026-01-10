@@ -294,7 +294,6 @@ int main(int argc, char* argv[]) {
     // 清理（只有正常退出才会执行到这里）
     CrashHandler::cleanup();
     return 0;
-
   } catch (const std::exception& e) {
     std::cerr << "程序启动失败: " << e.what() << std::endl;
     throw e;

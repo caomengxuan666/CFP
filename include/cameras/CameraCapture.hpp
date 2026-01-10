@@ -45,4 +45,5 @@ class CameraCapture {
   virtual moodycamel::ConcurrentQueue<std::shared_ptr<CapturedFrame>>&
   get_frame_queue() = 0;
   virtual protocol::FrontendStatus get_status() const = 0;
+  virtual void add_frame_processor(const FrameProcessor& processor) = 0;
 };

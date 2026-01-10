@@ -2,7 +2,7 @@
 name = "crash_handler_server"
 version = "0.1.0"
 edition = "2021"
-authors = ["Your Name <your.email@example.com>"]
+authors = ["caomengxuan666<2507560089@qq.com>"]
 description = "A lightweight crash information collection server for receiving minidump files"
 
 [dependencies]
@@ -17,6 +17,6 @@ config = "0.14"
 log = "0.4"
 env_logger = "0.11"
 tower = "0.4"
-tower-http = { version = "0.5", features = ["cors", "fs"] }
+tower-http = { version = "0.5", features = ["cors", "fs" ,"limit"] }
 anyhow = "1.0"
 tokio-util = { version = "0.7", features = ["io"] }

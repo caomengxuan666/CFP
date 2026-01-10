@@ -30,11 +30,26 @@
 // 虽然每个相机都有自己的配置文件，我们也需要管理多个相机的实例。
 #include <memory>
 #include <string>
+#include <vector>
+
+#include "config/CameraConfig.hpp"
+#include "config/ConfigMacros.hpp"
+#include "utils/inicpp.hpp"
+
+CONFIG_FORWARD_DECLARE(CameraEntry)
 
 struct CameraConfig;
 class CameraCapture;
-enum class CameraBrand { DVP, IKap, MIND };
+enum class CameraBrand;
 
-std::unique_ptr<CameraCapture> create_camera(const CameraBrand& brand,
-                                             const std::string& identifier,
-                                             const CameraConfig& config);
+// 模板化工厂（支持特有参数）
+// 从手工指定的配置中创建一个相机
+template <typename ConfigT>
+std::unique_ptr<CameraCapture> create_camera_typed(
+    const CameraBrand& brand, const std::string& identifier,
+    const ConfigT& config, const std::vector<std::string>& event_specs = {});
+
+// 从配置创建多个相机
+std::vector<std::shared_ptr<CameraCapture>> create_cameras_from_config(
+    const std::vector<config::CameraEntry>& camera_entries,
+    inicpp::IniManager& ini);

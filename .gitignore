@@ -10,4 +10,4 @@ out/
 /src/app/crash-server/target
 /src/app/crash-server/uploads
 *.dmp
-*.lock
+*.db

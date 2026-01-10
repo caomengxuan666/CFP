@@ -26,17 +26,19 @@
 
 #include <chrono>
 #include <iostream>
-#include <memory>
+#include <string>
 #include <thread>
+#include <utility>
+#include <vector>
 
 #include "algo/AlgoBase.hpp"
-#include "algo/HoleDetection.hpp"
+// #include "algo/HoleDetection.hpp"
 #include "cameras/CameraManager.hpp"
 #include "cameras/Dvp/DvpCameraBuilder.hpp"
 #include "cameras/Dvp/DvpCameraCapture.hpp"
 #include "cameras/FrameProcessor.hpp"
-#include "cameras/Ikap/IkapCameraCapture.hpp"
-#include "cameras/Ikap/IkapCameraManager.hpp"
+// #include "cameras/Ikap/IkapCameraCapture.hpp"
+// #include "cameras/Ikap/IkapCameraManager.hpp"
 #include "cameras/MultiCameraCoordinator.hpp"
 
 // 示例：创建一个简单的帧处理器
@@ -51,7 +53,7 @@ class SimpleFrameProcessor {
   }
 
   // 添加转换为FrameProcessor的函数
-  operator FrameProcessor() {
+  operator FrameProcessor() {  // NOLINT
     auto lambda = [this](const CapturedFrame& frame) {
       this->operator()(frame);
     };

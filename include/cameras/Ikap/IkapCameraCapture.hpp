@@ -53,7 +53,7 @@ class IkapCameraCapture : public CameraCapture {
   void set_roi(int x, int y, int width, int height) override;
 
   void register_event_handler(IkapEventType type, IkapEventHandler handler);
-  void add_frame_processor(const FrameProcessor& processor);  // 新增，和DVP一致
+  void add_frame_processor(const FrameProcessor& processor) override;
   protocol::FrontendStatus get_status() const override;
 
   IkapEventManager* get_event_manager() const { return event_manager_.get(); }

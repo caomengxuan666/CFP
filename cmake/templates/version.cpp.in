@@ -1,0 +1,187 @@
+// ===============================
+// 自动生成的版本实现文件
+// 生成时间: @CAPON_BUILD_DATE@
+// ===============================
+
+#include "capon_version.h"
+#include <stdio.h>  // 添加snprintf头文件
+
+#ifdef __cplusplus
+namespace capon {
+namespace version {
+#endif
+
+// ===============================
+// C接口实现
+// ===============================
+
+// 获取编译时间
+static const char* get_compile_time() {
+    static char compile_time[64] = {0};
+    if (compile_time[0] == 0) {
+        // 使用预定义宏
+        snprintf(compile_time, sizeof(compile_time), "%s %s", __DATE__, __TIME__);
+    }
+    return compile_time;
+}
+
+static const VersionInfo g_version_info = {
+    @CAPON_VERSION_MAJOR@,
+    @CAPON_VERSION_MINOR@,
+    @CAPON_VERSION_PATCH@,
+    @CAPON_VERSION_BUILD@,
+    "@CAPON_VERSION_MAJOR@.@CAPON_VERSION_MINOR@.@CAPON_VERSION_PATCH@.@CAPON_VERSION_BUILD@",
+    nullptr,  // full_version 现在动态生成
+    "@CAPON_PRODUCT_NAME@",
+    "@CAPON_COMPANY_NAME@",
+    "Copyright © @CAPON_COPYRIGHT_YEAR@ @CAPON_COMPANY_NAME@. All rights reserved.",
+    "@CAPON_APP_GUID@"
+};
+
+// 动态生成完整版本字符串
+static const char* get_full_version() {
+    static char full_version[256] = {0};
+    if (full_version[0] == 0) {
+        snprintf(full_version, sizeof(full_version),
+                 "%u.%u.%u.%u (Build %s)",
+                 g_version_info.major,
+                 g_version_info.minor,
+                 g_version_info.patch,
+                 g_version_info.build,
+                 get_compile_time());
+    }
+    return full_version;
+}
+
+CAPON_API const VersionInfo* capon_get_version_info(void) {
+    static bool initialized = false;
+    if (!initialized) {
+        // 设置动态生成的完整版本信息
+        // 因为结构体是静态常量，我们不能直接修改它
+        // 所以我们每次调用时都返回原始结构体，但通过额外函数提供完整版本
+        initialized = true;
+    }
+    return &g_version_info;
+}
+
+CAPON_API uint64_t capon_get_packed_version(void) {
+    return CAPON_VERSION_PACK(@CAPON_VERSION_MAJOR@, @CAPON_VERSION_MINOR@, @CAPON_VERSION_PATCH@, @CAPON_VERSION_BUILD@);
+}
+
+CAPON_API const char* capon_get_version_string(void) {
+    return "@CAPON_VERSION_MAJOR@.@CAPON_VERSION_MINOR@.@CAPON_VERSION_PATCH@.@CAPON_VERSION_BUILD@";
+}
+
+CAPON_API const char* capon_get_full_version(void) {
+    return get_full_version();
+}
+
+CAPON_API const char* capon_get_guid(void) {
+    return "@CAPON_APP_GUID@";
+}
+
+CAPON_API bool capon_check_version(uint16_t major, uint16_t minor, 
+                                  uint16_t patch, uint16_t build) {
+    return CAPON_VERSION_CHECK_MIN(major, minor, patch, build);
+}
+
+CAPON_API int capon_compare_version(uint16_t major1, uint16_t minor1, 
+                                   uint16_t patch1, uint16_t build1,
+                                   uint16_t major2, uint16_t minor2, 
+                                   uint16_t patch2, uint16_t build2) {
+    uint64_t v1 = CAPON_VERSION_PACK(major1, minor1, patch1, build1);
+    uint64_t v2 = CAPON_VERSION_PACK(major2, minor2, patch2, build2);
+    
+    if (v1 < v2) return -1;
+    if (v1 > v2) return 1;
+    return 0;
+}
+
+#ifdef __cplusplus
+} // namespace version
+
+// ===============================
+// C++接口实现
+// ===============================
+
+namespace version {
+
+Version::Version() 
+    : packed_(CAPON_VERSION_PACK(@CAPON_VERSION_MAJOR@, @CAPON_VERSION_MINOR@, @CAPON_VERSION_PATCH@, @CAPON_VERSION_BUILD@)) {
+    info_.major = @CAPON_VERSION_MAJOR@;
+    info_.minor = @CAPON_VERSION_MINOR@;
+    info_.patch = @CAPON_VERSION_PATCH@;
+    info_.build = @CAPON_VERSION_BUILD@;
+    info_.version_string = "@CAPON_VERSION_MAJOR@.@CAPON_VERSION_MINOR@.@CAPON_VERSION_PATCH@.@CAPON_VERSION_BUILD@";
+    info_.full_version = nullptr; // 通过函数动态获取
+    info_.product_name = "@CAPON_PRODUCT_NAME@";
+    info_.company_name = "@CAPON_COMPANY_NAME@";
+    info_.copyright = "Copyright © @CAPON_COPYRIGHT_YEAR@ @CAPON_COMPANY_NAME@. All rights reserved.";
+    info_.guid = "@CAPON_APP_GUID@";
+}
+
+CAPON_API const Version& Version::instance() {
+    static Version instance;
+    return instance;
+}
+
+static const char* get_cpp_compile_time() {
+    static char compile_time[64] = {0};
+    if (compile_time[0] == 0) {
+        snprintf(compile_time, sizeof(compile_time), "%s %s", __DATE__, __TIME__);
+    }
+    return compile_time;
+}
+
+const char* Version::fullVersion() const { 
+    static char full_version[256] = {0};
+    if (full_version[0] == 0) {
+        snprintf(full_version, sizeof(full_version),
+                 "%u.%u.%u.%u (Build %s)",
+                 info_.major,
+                 info_.minor,
+                 info_.patch,
+                 info_.build,
+                 get_cpp_compile_time());
+    }
+    return full_version;
+}
+
+CAPON_API int Version::compare(uint16_t major1, uint16_t minor1, 
+                              uint16_t patch1, uint16_t build1,
+                              uint16_t major2, uint16_t minor2, 
+                              uint16_t patch2, uint16_t build2) {
+    return capon_compare_version(major1, minor1, patch1, build1,
+                                major2, minor2, patch2, build2);
+}
+
+CAPON_API bool Version::checkMin(uint16_t major, uint16_t minor, 
+                                uint16_t patch, uint16_t build) const {
+    return packed_ >= CAPON_VERSION_PACK(major, minor, patch, build);
+}
+
+CAPON_API bool Version::inRange(uint16_t min_major, uint16_t min_minor, 
+                               uint16_t min_patch, uint16_t min_build,
+                               uint16_t max_major, uint16_t max_minor, 
+                               uint16_t max_patch, uint16_t max_build) const {
+    uint64_t min_version = CAPON_VERSION_PACK(min_major, min_minor, 
+                                             min_patch, min_build);
+    uint64_t max_version = CAPON_VERSION_PACK(max_major, min_minor, 
+                                             max_patch, max_build);
+    return packed_ >= min_version && packed_ <= max_version;
+}
+
+CAPON_API std::string Version::toString() const {
+    return std::string(fullVersion());
+}
+
+CAPON_API std::string Version::toShortString() const {
+    char buffer[64];
+    snprintf(buffer, sizeof(buffer), "%u.%u.%u.%u", 
+             major(), minor(), patch(), build());
+    return std::string(buffer);
+}
+
+} // namespace version
+} // namespace capon
+#endif // __cplusplus

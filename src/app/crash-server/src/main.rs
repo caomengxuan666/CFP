@@ -27,11 +27,6 @@ async fn main() -> Result<()> {
     .format_timestamp_secs()
     .init();
 
-    println!(
-        "Server configuration loaded: port={}, host={}",
-        settings.server.port, settings.server.host
-    );
-
     // 初始化数据库
     let db = Arc::new(Database::new(&settings.database.path)?);
 

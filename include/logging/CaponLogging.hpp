@@ -33,6 +33,7 @@
 #include <vector>
 
 #include "config/ConfigMacros.hpp"
+#include "config/GlobalConfig.hpp"
 #include "spdlog/logger.h"
 
 #ifdef NDEBUG  // Release模式
@@ -53,6 +54,9 @@ CONFIG_FORWARD_DECLARE(LoggingConfig)
 class CaponLogger {
  private:
   // 服务器配置结构
+
+  // 当前配置
+  config::LoggingConfig current_logging_config;
   struct TcpServerConfig {
     std::string ip{"127.0.0.1"};
     uint16_t port{8080};
@@ -137,6 +141,12 @@ class CaponLogger {
   static CaponLogger& instance() {
     static CaponLogger instance;
     return instance;
+  }
+
+  void cleanup();
+
+  const config::LoggingConfig& getCurrentLoggingConfig() const {
+    return current_logging_config;
   }
 
   // 日志记录函数

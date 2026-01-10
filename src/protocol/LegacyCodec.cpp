@@ -27,10 +27,23 @@
 // Copyright (c) 2025 caomengxuan666
 #include "protocol/LegacyCodec.hpp"
 
+#include <winsock2.h>
+
 #include <cstring>
 #include <vector>
 
+#pragma comment(lib, "ws2_32.lib")
+#define WIN32_LEAN_AND_MEAN
+
 namespace protocol {
+
+// 辅助函数：将float转换为大端序（核心：按二进制解析为uint32_t后转换）
+inline uint8_t* float_to_big_endian(float f, uint8_t* buf) noexcept {
+  uint32_t val = *reinterpret_cast<uint32_t*>(&f);  // NOLINT
+  val = ::htonl(val);                               // 转换为大端序
+  memcpy(buf, &val, 4);
+  return buf;
+}
 
 std::vector<uint8_t> LegacyCodec::encode_config(const ServerConfig& config) {
   std::vector<uint8_t> buffer;
@@ -339,13 +352,15 @@ std::optional<FeatureReport> LegacyCodec::decode_features(
 
 std::vector<uint8_t> LegacyCodec::encode_status(const FrontendStatus& status) {
   std::vector<uint8_t> buffer;
+  // 提前预留5字节（1个'T' + 4字节uint32），避免内存重分配
+  buffer.reserve(5);
   buffer.push_back('T');
 
-  uint32_t status_int = status.to_uint32();
+  uint32_t status_big_endian = ::htonl(status.to_uint32());
 
   buffer.insert(buffer.end(),
-                reinterpret_cast<uint8_t*>(&status_int),       // NOLINT
-                reinterpret_cast<uint8_t*>(&status_int) + 4);  // NOLINT
+                reinterpret_cast<uint8_t*>(&status_big_endian),       // NOLINT
+                reinterpret_cast<uint8_t*>(&status_big_endian) + 4);  // NOLINT
   return buffer;
 }
 

@@ -57,11 +57,14 @@ void CaponLogger::initialize() {
   // 统一的日志格式
   std::string common_pattern = "[%Y-%m-%d %H:%M:%S.%e] [%l] [%t] [%s:%#] %v";
 
+  // 控制台的加上颜色
+  std::string color_pattern = "%^[%Y-%m-%d %H:%M:%S.%e] [%l] [%t] [%s:%#]%$ %v";
   // 1. 控制台sink（彩色输出）
-  auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-  console_sink->set_level(config_.console_level.load());
-  console_sink->set_pattern(common_pattern);
 
+  auto console_sink =
+      std::make_shared<spdlog::sinks::wincolor_stdout_sink_mt>();
+  console_sink->set_level(config_.console_level.load());
+  console_sink->set_pattern(color_pattern);
   // 创建单独的console logger
   console_logger_ =
       std::make_shared<spdlog::logger>("capon_console", console_sink);
@@ -82,14 +85,21 @@ void CaponLogger::initialize() {
   // 3. 网络sink（TCP/UDP）
   setupNetworkSink(sinks);
 
-  // 创建主logger（组合所有sink）
+  // ===== 关键修改：按Issue #1173 要求创建线程池 =====
   if (config_.async_enabled) {
-    // 异步模式
-    spdlog::init_thread_pool(config_.queue_size, 2);
+    // 只初始化一次全局线程池（避免重复创建）
+    static bool global_pool_inited = false;
+    if (!global_pool_inited) {
+      spdlog::init_thread_pool(config_.queue_size,
+                               2);  // 全局线程池，只创建一次
+      global_pool_inited = true;
+    }
+    // 获取全局线程池的weak_ptr（符合async_logger要求）
+    auto tp = spdlog::thread_pool();
 
-    // 创建异步logger，使用所有sink
+    // 创建异步logger，使用全局线程池（weak_ptr）
     main_logger_ = std::make_shared<spdlog::async_logger>(
-        "capon_main", sinks.begin(), sinks.end(), spdlog::thread_pool(),
+        "capon_main", sinks.begin(), sinks.end(), tp,  // 用全局线程池的weak_ptr
         spdlog::async_overflow_policy::block);
   } else {
     // 同步模式
@@ -100,8 +110,8 @@ void CaponLogger::initialize() {
   // 设置主logger的全局级别为最低，各个sink有自己的过滤级别
   main_logger_->set_level(spdlog::level::trace);
 
-  // 注册为默认logger
-  spdlog::set_default_logger(main_logger_);
+  // 注册为默认logger（关键：让注册表管理logger生命周期）
+  spdlog::register_logger(main_logger_);
 
   if (main_logger_) {
     main_logger_->info("Logger initialized with {} sink(s)", sinks.size());
@@ -110,7 +120,6 @@ void CaponLogger::initialize() {
     std::cout << "NetWork Logger Transport on" << std::endl;
   }
 }
-
 void CaponLogger::reinitialize() {
   // 对于重新初始化，我们直接清理现有资源并重新创建
   if (main_logger_) {
@@ -125,6 +134,26 @@ void CaponLogger::reinitialize() {
   initialized_.store(false);
   // 重新初始化
   initialize();
+}
+
+void CaponLogger::cleanup() {
+  // 1. 强制刷新所有日志（确保最后一条日志能刷出去）
+  flush();
+
+  // 2.
+  // 只销毁logger，不销毁全局线程池（关键！按Issue要求，线程池交给spdlog::shutdown()处理）
+  if (main_logger_) {
+    spdlog::drop(main_logger_->name());  // 从注册表移除logger
+    main_logger_.reset();
+  }
+  if (console_logger_) {
+    spdlog::drop(console_logger_->name());
+    console_logger_.reset();
+  }
+
+  // 3. 标记为未初始化（仅重置状态，不碰线程池）
+  initialized_.store(false);
+  first_init_called_.store(false);
 }
 
 void CaponLogger::setupNetworkSink(std::vector<spdlog::sink_ptr>& sinks) {
@@ -372,6 +401,7 @@ void CaponLogger::enableIpcLogging(bool enable, const std::string& ip,
 }
 
 void CaponLogger::applyConfig(const config::LoggingConfig& logging_config) {
+  current_logging_config = logging_config;
   // 将字符串转换为spdlog级别
   spdlog::level::level_enum file_level =
       spdlog::level::from_str(logging_config.file_level);

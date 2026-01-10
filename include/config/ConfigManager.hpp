@@ -30,10 +30,11 @@
 #include <utility>
 #include <vector>
 
-#include "GlobalConfig.hpp"
 #include "algo/GenericAlgorithmConfigObserver.hpp"
 #include "config/ConfigObserver.hpp"
 #include "config/GlobalConfig.hpp"
+#include "config/ModuleIniter.hpp"
+#include "logging/CaponLogging.hpp"
 
 namespace config {
 
@@ -70,9 +71,10 @@ class ConfigManager {
     return algo;
   }
 
+  void addObserver(ConfigObserver* obs);
+
  private:
   ConfigManager() = default;
-  void addObserver(ConfigObserver* obs);
 
   // Trait: 从 GlobalConfig 提取特定算法配置
   template <typename AlgoType>
@@ -93,6 +95,13 @@ void ConfigManager::start() {
   }
   loader_ = std::make_unique<ConfigLoader>();
   current_config_ = loader_->load();
+
+  // 同时自动注册所有模块
+  config::ModuleIniter::instance().init_all(*this);
+
+  LOG_INFO(
+      "ConfigManager 启动完成，已初始化 {} 个模块",
+      config::ModuleIniter::instance().get_module_count());  // 可选：统计模块数
 }
 
 GlobalConfig ConfigManager::get_current_config() const {

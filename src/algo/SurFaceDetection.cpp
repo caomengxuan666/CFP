@@ -41,7 +41,9 @@ std::vector<AlgoSignalInfo> SurfaceDetection::get_signal_info() const {
 
 void SurfaceDetection::update_config(const Config& new_cfg) {}
 
-SurfaceDetection::SurfaceDetection() {}
+SurfaceDetection::SurfaceDetection() {
+  std::cout << "这里以后再实现,写一个cout防止编译器警告" << std::endl;
+}
 
 SurfaceDetection::SurfaceDetection(const Config& cfg) {}
 

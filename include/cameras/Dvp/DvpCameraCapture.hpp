@@ -57,7 +57,7 @@ class DvpCameraCapture : public CameraCapture {
 
   virtual void register_event_handler(DvpEventType event,
                                       DvpEventHandler handler);
-  virtual void add_frame_processor(const FrameProcessor& processor);
+  void add_frame_processor(const FrameProcessor& processor) override;
   virtual DvpEventManager* get_event_manager() const;
   auto& get_frame_processor() const { return user_processor_; }
 

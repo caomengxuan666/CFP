@@ -25,7 +25,8 @@
  */
 
 #pragma once
-
+// 相机品牌枚举
+enum class CameraBrand { DVP, IKap, MIND };
 // 通用相机配置结构
 struct CameraConfig {
   // 基本图像参数
